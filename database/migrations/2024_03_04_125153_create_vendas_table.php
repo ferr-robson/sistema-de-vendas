@@ -17,7 +17,7 @@ return new class extends Migration
             $table->unsignedBigInteger('forma_pagamento_id');
             $table->date('data_venda');
             $table->decimal('total_venda', 8, 2);
-            $table->boolean('tipo_pagamento')->default(false);
+            $table->boolean('parcelado')->default(false);
             $table->timestamps();
             
             $table->foreign('cliente_id')->references('id')->on('clientes');
