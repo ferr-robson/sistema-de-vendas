@@ -28,11 +28,13 @@ class ProdutoController extends Controller
         ]);
 
         $produto = new Produto();
-        $produto->nome = $request->nome;
-        $produto->preco = $request->preco;
-
+        $produto->fill([
+            'nome' => $request->nome,
+            'preco' => $request->preco,
+        ]);
         $produto->save();
 
+        
         return response()->json($produto, 201);
     }
 

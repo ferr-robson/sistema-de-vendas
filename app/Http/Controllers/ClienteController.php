@@ -28,9 +28,10 @@ class ClienteController extends Controller
         ]);
 
         $cliente = new Cliente();
-        $cliente->nome = $request->nome;
-        $cliente->email = $request->email;
-
+        $cliente->fill([
+            'nome' => $request->nome,
+            'email' => $request->email
+        ]);
         $cliente->save();
 
         return response()->json($cliente, 201);

@@ -26,76 +26,72 @@ class VendaController extends Controller
      */
     public function store(Request $request)
     {
-        DB::beginTransaction();
-
         try {
-            // tabela de vendas
+            // validar dados de entrada
             $request->validate([
                 'cliente' => 'nullable|exists:clientes,id',
                 'forma_pagamento' => 'required|exists:forma_pagamentos,id',
                 'total_venda' => 'required|numeric|min:0',
                 'parcelado' => 'boolean',
-                
                 'produtos' => 'required|array', 
-                'produtos.*' => 'required|array', 
                 'produtos.*.produto_id' => 'required|exists:produtos,id', 
                 'produtos.*.quantidade' => 'required|numeric',
-                
                 'qtde_parcelas' => 'nullable|numeric|min:0',
             ]);
-    
-            $data_atual = new \DateTime();
-            
+        
+            // iniciar a transacao
+            DB::beginTransaction();
+        
+            // Preencher dados da tabela de Venda
             $venda = new Venda();
-            $venda->cliente_id = $request->cliente;
-            $venda->forma_pagamento_id = $request->forma_pagamento;
-            $venda->data_venda = $data_atual;
-            $venda->total_venda = $request->total_venda;
-            $venda->parcelado = $request->parcelado;
-    
+            $venda->fill([
+                'cliente_id' => $request->cliente,
+                'forma_pagamento_id' => $request->forma_pagamento,
+                'data_venda' => now(),
+                'total_venda' => $request->total_venda,
+                'parcelado' => $request->parcelado,
+            ]);
             $venda->save();
-    
-            // return response()->json($venda, 201);
-            // /tabela de vendas
-
-            // tabela de produto vendas
+        
+            // Preencher dados da tebela de ProdutoVenda
             foreach ($request->produtos as $produto) {
                 $item = Produto::findOrFail($produto['produto_id']);
-
+        
                 $itemVenda = new ItemVenda();
-                $itemVenda->venda_id = $venda->id;
-                $itemVenda->produto_id = $produto['produto_id'];
-                $itemVenda->quantidade = $produto['quantidade'];
-                $itemVenda->preco = $item->preco / $produto['quantidade'];
-
+                $itemVenda->fill([
+                    'venda_id' => $venda->id,
+                    'produto_id' => $produto['produto_id'],
+                    'quantidade' => $produto['quantidade'],
+                    'preco' => $item->preco / $produto['quantidade'],
+                ]);
                 $itemVenda->save();
             }
-            // /tabela de produto vendas
-
-            // tabela de parcelas
-            if ($request->qtde_parcelas > 0 && $request->parcelado) {
-                $vencimentoParcela = new \DateTime();
-                $vencimentoParcela->modify('+1 month');
+        
+            // Preencher dados da tabela de Parcelas, se necessário
+            if ($request->parcelado && $request->qtde_parcelas > 0) {
+                $vencimentoParcela = now()->addMonth();
+        
                 for ($i = 0; $i < $request->qtde_parcelas; $i++) {
                     $parcela = new Parcela();
-                    $parcela->venda_id = $venda->id;
-                    $parcela->data_vencimento = $vencimentoParcela;
-                    
-                    // deve ser possivel adicionar juros sobre o valor da parcela, no futuro
-                    $parcela->valor_parcela = $request->total_venda / $request->qtde_parcelas;
+                    $parcela->fill([
+                        'venda_id' => $venda->id,
+                        'data_vencimento' => $vencimentoParcela,
+                        'valor_parcela' => $request->total_venda / $request->qtde_parcelas,
+                    ]);
                     $parcela->save();
-    
-                    $vencimentoParcela->modify('+1 month');
+        
+                    $vencimentoParcela->addMonth();
                 }
             }
-            // /tabela de parcelas
-
+        
+            // se houve sucesso, commitar a transacao
             DB::commit();
 
             return response()->json($venda, 201);
         } catch (\Exception $e) {
+            // se houve erro, dar rollback na transacao
             DB::rollback();
-
+        
             return response()->json('Erro ao inserir registro de venda: ' . $e->getMessage(), 500);
         }
     }

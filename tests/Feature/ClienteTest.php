@@ -12,38 +12,46 @@ class ClienteTest extends TestCase
     
     public function test_criar_cliente_sem_erros(): void
     {
-        $response = $this->post('/api/cliente', [
+        $dados = [
             'nome' => 'Nome do Cliente',
             'email' => 'email@cliente.com',
-        ]);
+        ];
+        
+        $response = $this->post('/api/cliente', $dados);
 
         $response->assertValid();
     }
 
     public function test_criar_cliente_sem_nome_gera_erro(): void
     {
-        $response = $this->post('/api/cliente', [
+        $dados = [
             'email' => 'email@cliente.com',
-        ]);
+        ];
+
+        $response = $this->post('/api/cliente', $dados);
 
         $response->assertInvalid();
     }
 
     public function test_criar_cliente_sem_email_gera_erro(): void
     {
-        $response = $this->post('/api/cliente', [
+        $dados = [
             'nome' => 'Nome do Cliente',
-        ]);
+        ];
+
+        $response = $this->post('/api/cliente', $dados);
 
         $response->assertInvalid();
     }
 
     public function test_criar_cliente_com_email_invalido_gera_erro(): void
     {
-        $response = $this->post('/api/cliente', [
+        $dados = [
             'nome' => 'Nome do Cliente',
             'email' => 'emaildocliente',
-        ]);
+        ];
+
+        $response = $this->post('/api/cliente', $dados);
 
         $response->assertInvalid();
     }
