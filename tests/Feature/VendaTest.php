@@ -23,9 +23,10 @@ class VendaTest extends TestCase
             'qtde_parcelas' => 5
         ];
 
-        // $dados = json_encode($dados);
         $response = $this->post('/api/venda',  $dados);
 
         $response->assertValid();
+
+        // fazer esse testes funcionar
     }
 }

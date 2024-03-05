@@ -6,7 +6,6 @@ use App\Models\Venda;
 use App\Models\Parcela;
 use App\Models\ItemVenda;
 use App\Models\Produto;
-// use App\Http\Requests\StoreVendaRequest;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\UpdateVendaRequest;
 use Illuminate\Http\Request;
@@ -18,7 +17,9 @@ class VendaController extends Controller
      */
     public function index()
     {
-        //
+        $vendas = Venda::with('itens')->with('parcelas')->get();
+
+        return response()->json($vendas, 200);
     }
 
     /**
@@ -62,7 +63,7 @@ class VendaController extends Controller
                     'venda_id' => $venda->id,
                     'produto_id' => $produto['produto_id'],
                     'quantidade' => $produto['quantidade'],
-                    'preco' => $item->preco / $produto['quantidade'],
+                    'preco' => $item->preco * $produto['quantidade'],
                 ]);
                 $itemVenda->save();
             }
@@ -117,6 +118,8 @@ class VendaController extends Controller
      */
     public function destroy(Venda $venda)
     {
-        //
+        $venda->delete();
+
+        return response()->json('Registro de venda removido com sucesso.', 200);
     }
 }
