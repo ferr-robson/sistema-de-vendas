@@ -14,7 +14,9 @@ class ProdutoController extends Controller
      */
     public function index()
     {
-        //
+        $produtos = Produto::all();
+
+        return response()->json($produtos, 200);
     }
 
     /**
@@ -43,15 +45,24 @@ class ProdutoController extends Controller
      */
     public function show(Produto $produto)
     {
-        //
+        return response()->json($produto);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateProdutoRequest $request, Produto $produto)
+    public function update(Request $request, Produto $produto)
     {
-        //
+        $request->validate([
+            'nome' => 'required|max:255',
+            'preco' => 'required|numeric|gt:0'
+        ]);
+
+        $produto->nome = $request->nome;
+        $produto->preco = $request->preco;
+        $produto->update();
+
+        return response()->json($produto, 200);
     }
 
     /**
@@ -59,6 +70,8 @@ class ProdutoController extends Controller
      */
     public function destroy(Produto $produto)
     {
-        //
+        $produto->delete();
+
+        return response()->json('O produto foi removido com sucesso.', 200);
     }
 }
