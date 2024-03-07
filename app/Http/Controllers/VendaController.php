@@ -7,7 +7,7 @@ use App\Models\Parcela;
 use App\Models\ItemVenda;
 use App\Models\Produto;
 use Illuminate\Support\Facades\DB;
-use App\Http\Requests\UpdateVendaRequest;
+// use App\Http\Requests\UpdateVendaRequest;
 use Illuminate\Http\Request;
 
 class VendaController extends Controller
@@ -54,6 +54,7 @@ class VendaController extends Controller
             ]);
             $venda->save();
         
+            $validacaoPrecoTotal = 0;
             // Preencher dados da tebela de ProdutoVenda
             foreach ($request->produtos as $produto) {
                 $item = Produto::findOrFail($produto['produto_id']);
@@ -65,11 +66,21 @@ class VendaController extends Controller
                     'quantidade' => $produto['quantidade'],
                     'preco' => $item->preco * $produto['quantidade'],
                 ]);
+
+                $validacaoPrecoTotal += $item->preco * $produto['quantidade'];
+
                 $itemVenda->save();
+            }
+
+            // rollback da transacao se for verificado que o valor informado e meno que a soma dos valores dos produtos
+            if (abs($validacaoPrecoTotal - (double)$venda->total_venda) > 0.001) {
+                DB::rollback();
+
+                return response()->json('ERRO: Valor total da venda é incompatível.', 400);
             }
         
             // Preencher dados da tabela de Parcelas, se necessário
-            if ($request->parcelado && $request->qtde_parcelas > 0) {
+            if ($request->parcelado) {
                 $vencimentoParcela = now()->addMonth();
         
                 for ($i = 0; $i < $request->qtde_parcelas; $i++) {
@@ -84,7 +95,7 @@ class VendaController extends Controller
                     $vencimentoParcela->addMonth();
                 }
             }
-        
+
             // se houve sucesso, commitar a transacao
             DB::commit();
 
@@ -102,15 +113,60 @@ class VendaController extends Controller
      */
     public function show(Venda $venda)
     {
-        //
+        $venda->load('itens', 'parcelas');
+
+        return response()->json($venda, 200);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateVendaRequest $request, Venda $venda)
+    public function update(Request $request, Venda $venda)
     {
-        //
+        try {
+            $dadosValidados = $request->validate([
+                'cliente_id' => 'nullable|exists:clientes,id',
+                'forma_pagamento_id' => 'exists:forma_pagamentos,id',
+                'total_venda' => 'numeric|min:0',
+                'parcelado' => 'boolean',
+                'qtde_parcelas' => 'numeric|min:0',
+            ]);
+            
+            DB::beginTransaction();
+
+            // caso decisa-se parcelar a compra agora
+            if ($request->parcelado && ($request->parcelado != $venda->parcelado)) {
+                $vencimentoParcela = $venda->data_venda;
+            
+                for ($i = 0; $i < $request->qtde_parcelas; $i++) {
+                    $parcela = new Parcela();
+                    $parcela->fill([
+                        'venda_id' => $venda->id,
+                        'data_vencimento' => $vencimentoParcela,
+                        'valor_parcela' => $request->total_venda / $request->qtde_parcelas,
+                    ]);
+                    $parcela->save();
+        
+                    $vencimentoParcela->addMonth();
+                }
+            }
+    
+            // se a compra foi inicialmente parcelada e agora eh a vista
+            if (!$request->parcelado && ($request->parcelado != $venda->parcelado)) {
+                Parcela::where('venda_id', $venda->id)->delete();
+            }
+    
+            $venda->update($dadosValidados);
+    
+            DB::commit();
+
+            return response()->json($venda, 200);
+        } catch (\Exception $e) {
+            // se houve erro, dar rollback na transacao
+            DB::rollback();
+        
+            return response()->json('Erro ao inserir registro de venda: ' . $e->getMessage(), 500);
+        }
     }
 
     /**

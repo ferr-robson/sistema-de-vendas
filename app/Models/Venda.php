@@ -22,6 +22,6 @@ class Venda extends Model
 
     public function itens(): BelongsToMany
     {
-        return $this->belongsToMany(Produto::class, 'item_vendas')->withPivot('quantidade');
+        return $this->belongsToMany(Produto::class, 'item_vendas')->withPivot('quantidade', 'preco');
     }
 }
