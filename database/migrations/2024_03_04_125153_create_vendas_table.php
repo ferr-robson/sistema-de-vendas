@@ -20,7 +20,7 @@ return new class extends Migration
             $table->boolean('parcelado')->default(false);
             $table->timestamps();
             
-            $table->foreign('cliente_id')->references('id')->on('clientes');
+            $table->foreign('cliente_id')->references('id')->on('clientes')->onDelete('set null');
             $table->foreign('forma_pagamento_id')->references('id')->on('forma_pagamentos');
         });
     }

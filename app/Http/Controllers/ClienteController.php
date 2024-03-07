@@ -14,7 +14,9 @@ class ClienteController extends Controller
      */
     public function index()
     {
-        //
+        $clientes = Cliente::all();
+
+        return response()->json($clientes, 200);
     }
 
     /**
@@ -42,15 +44,26 @@ class ClienteController extends Controller
      */
     public function show(Cliente $cliente)
     {
-        //
+        return response()->json($cliente, 200);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateClienteRequest $request, Cliente $cliente)
+    public function update(Request $request, Cliente $cliente)
     {
-        //
+        $request->validate([
+            'nome' => 'required|max:255',
+            'email' => 'required|email|max:255'
+        ]);
+
+        $cliente->fill([
+            'nome' => $request->nome,
+            'email' => $request->email
+        ]);
+        $cliente->update();
+
+        return response()->json($cliente, 200);
     }
 
     /**
@@ -58,6 +71,8 @@ class ClienteController extends Controller
      */
     public function destroy(Cliente $cliente)
     {
-        //
+        $cliente->delete();
+
+        return response()->json('Registro de cliente removido com sucesso.', 200);
     }
 }
