@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\FormaPagamentoController;
+use App\Http\Controllers\ItemVendaController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ClienteController;
@@ -22,6 +23,7 @@ Route::resource('cliente', ClienteController::class);
 Route::resource('produto', ProdutoController::class);
 Route::resource('venda', VendaController::class);
 Route::resource('forma-pagamento', FormaPagamentoController::class);
+Route::resource('item-venda', ItemVendaController::class);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
