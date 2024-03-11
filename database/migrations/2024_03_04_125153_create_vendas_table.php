@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('vendas', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('cliente_id')->nullable();
+            $table->unsignedBigInteger('vendedor_id');
             $table->unsignedBigInteger('forma_pagamento_id');
             $table->date('data_venda');
             $table->decimal('total_venda', 8, 2);
@@ -21,6 +22,7 @@ return new class extends Migration
             $table->timestamps();
             
             $table->foreign('cliente_id')->references('id')->on('clientes')->onDelete('set null');
+            $table->foreign('vendedor_id')->references('id')->on('users');
             $table->foreign('forma_pagamento_id')->references('id')->on('forma_pagamentos');
         });
     }

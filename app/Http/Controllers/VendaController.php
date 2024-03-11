@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Venda;
 use App\Models\Parcela;
-use App\Models\ItemVenda;
 use App\Models\Produto;
-use Illuminate\Support\Facades\DB;
-// use App\Http\Requests\UpdateVendaRequest;
+use App\Models\ItemVenda;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class VendaController extends Controller
 {
@@ -47,6 +47,7 @@ class VendaController extends Controller
             $venda = new Venda();
             $venda->fill([
                 'cliente_id' => $request->cliente,
+                'vendedor_id' => Auth::user()->id,
                 'forma_pagamento_id' => $request->forma_pagamento,
                 'data_venda' => now(),
                 'total_venda' => $request->total_venda,
