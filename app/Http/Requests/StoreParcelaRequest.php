@@ -11,7 +11,7 @@ class StoreParcelaRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,7 +22,9 @@ class StoreParcelaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'venda_id' => 'required|exists:vendas,id',
+            'data_vencimento' => 'required|date|after:today',
+            'valor_parcela' => 'required|numeric|min:0',
         ];
     }
 }

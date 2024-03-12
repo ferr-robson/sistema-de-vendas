@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ParcelaController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -29,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::resource('venda', VendaController::class);
     Route::resource('forma-pagamento', FormaPagamentoController::class);
     Route::resource('item-venda', ItemVendaController::class);
+    Route::resource('parcela', ParcelaController::class);
 });
 
 Route::post('/login', function (Request $request) {
