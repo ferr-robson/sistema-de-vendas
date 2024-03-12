@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
-// use App\Http\Requests\StoreClienteRequest;
+use App\Http\Requests\StoreClienteRequest;
 use App\Http\Requests\UpdateClienteRequest;
 use Illuminate\Http\Request;
 
@@ -22,19 +22,9 @@ class ClienteController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreClienteRequest $request)
     {
-        $request->validate([
-            'nome' => 'required|max:255',
-            'email' => 'required|email|max:255'
-        ]);
-
-        $cliente = new Cliente();
-        $cliente->fill([
-            'nome' => $request->nome,
-            'email' => $request->email
-        ]);
-        $cliente->save();
+        $cliente = Cliente::create($request->validated());
 
         return response()->json($cliente, 201);
     }
@@ -50,18 +40,9 @@ class ClienteController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Cliente $cliente)
+    public function update(UpdateClienteRequest $request, Cliente $cliente)
     {
-        $request->validate([
-            'nome' => 'required|max:255',
-            'email' => 'required|email|max:255'
-        ]);
-
-        $cliente->fill([
-            'nome' => $request->nome,
-            'email' => $request->email
-        ]);
-        $cliente->update();
+        $cliente->update($request->validated());
 
         return response()->json($cliente, 200);
     }
