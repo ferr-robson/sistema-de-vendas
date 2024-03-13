@@ -11,6 +11,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 class ClienteTest extends TestCase
 {
     use RefreshDatabase;
+    
+    /**
+     * Cria um usuario a ser utilizado como ator nas acoes de request
+     */
     private function criarUserAtor(){
         $user = User::create([
             'name' => 'João',
@@ -21,14 +25,9 @@ class ClienteTest extends TestCase
         $this->actingAs($user);
     }    
 
-    public function test_index_gera_ok_response(): void
+    public function test_cliente_index_gera_ok_response(): void
     {
         $this->criarUserAtor();
-
-        Cliente::create([
-            'nome' => 'Paulo',
-            'email' => 'paulo123@email.com'
-        ]);
 
         $response = $this->get('/api/cliente/');
 
@@ -126,7 +125,7 @@ class ClienteTest extends TestCase
         $response->assertInvalid();
     }
 
-    public function test_show_gera_ok_response(): void
+    public function test_cliente_show_gera_ok_response(): void
     {
         $this->criarUserAtor();
 
@@ -140,7 +139,7 @@ class ClienteTest extends TestCase
         $response->assertValid();
     }
 
-    public function test_destroy_gera_ok_response(): void
+    public function test_apagar_cliente_gera_ok_response(): void
     {
         $this->criarUserAtor();
 

@@ -11,7 +11,7 @@ class UpdateVendaRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,7 +22,15 @@ class UpdateVendaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'cliente_id' => 'nullable|exists:clientes,id',
+            'forma_pagamento_id' => 'exists:forma_pagamentos,id',
+            'vendedor_id' => 'exists:users,id',
+            'total_venda' => 'numeric|min:0',
+            'parcelado' => 'boolean',
+            'produtos' => 'array', 
+            'produtos.*.produto_id' => 'exists:produtos,id', 
+            'produtos.*.quantidade' => 'numeric',
+            'qtde_parcelas' => 'nullable|numeric|min:0',
         ];
     }
 }
