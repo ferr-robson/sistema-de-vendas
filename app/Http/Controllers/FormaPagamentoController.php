@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\FormaPagamento;
 use App\Http\Requests\StoreFormaPagamentoRequest;
 use App\Http\Requests\UpdateFormaPagamentoRequest;
-use Illuminate\Http\Request;
 
 class FormaPagamentoController extends Controller
 {
@@ -22,16 +21,10 @@ class FormaPagamentoController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreFormaPagamentoRequest $request)
     {
-        $request->validate([
-            'nome' => 'required|min:2|max:255'
-        ]);
-    
-        $formaPagamento = new FormaPagamento();
-        $formaPagamento->nome = $request->nome;
-        $formaPagamento->save();
-
+        $formaPagamento = FormaPagamento::create($request->validated());
+     
         return response()->json($formaPagamento, 201);
     }
 
@@ -46,14 +39,9 @@ class FormaPagamentoController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, FormaPagamento $formaPagamento)
+    public function update(UpdateFormaPagamentoRequest $request, FormaPagamento $formaPagamento)
     {
-        $request->validate([
-            'nome' => 'required|min:2|max:255'
-        ]);
-
-        $formaPagamento->nome = $request->nome;
-        $formaPagamento->update();
+        $formaPagamento->update($request->validated());
 
         return response()->json($formaPagamento, 200);
     }
