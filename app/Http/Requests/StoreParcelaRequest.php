@@ -24,7 +24,7 @@ class StoreParcelaRequest extends FormRequest
         return [
             'venda_id' => 'required|exists:vendas,id',
             'data_vencimento' => 'required|date|after:today',
-            'valor_parcela' => 'required|numeric|min:0',
+            'valor_parcela' => 'required|numeric|min:1',
         ];
     }
 }

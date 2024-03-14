@@ -24,7 +24,7 @@ class UpdateParcelaRequest extends FormRequest
         return [
             'venda_id' => 'required|exists:vendas,id',
             'data_vencimento' => 'required|date',
-            'valor_parcela' => 'required|numeric|min:0',
+            'valor_parcela' => 'required|numeric|min:1',
         ];
     }
 }

@@ -33,7 +33,7 @@ class ParcelaController extends Controller
     {
         $parcela = Parcela::create($request->validated());
 
-        return response()->json($parcela, 200);
+        return response()->json($parcela, 201);
     }
 
     /**

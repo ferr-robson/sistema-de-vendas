@@ -17,7 +17,7 @@ class VendaTest extends TestCase
     /**
      * Cria um usuario a ser utilizado como ator nas acoes de request
      */
-    private function criarUserAtor(){
+    private function criarUserAtor() {
         $user = User::create([
             'name' => 'João',
             'email' => 'joao123@mail.com',

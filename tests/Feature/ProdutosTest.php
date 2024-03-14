@@ -12,7 +12,7 @@ class ProdutosTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function criarUserAtor(){
+    private function criarUserAtor() {
         $user = User::create([
             'name' => 'João',
             'email' => 'joao123@mail.com',
