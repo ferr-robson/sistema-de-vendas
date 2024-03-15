@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Venda;
 use App\Models\Produto;
 use App\Models\ItemVenda;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\StoreItemVendaRequest;
 use App\Http\Requests\UpdateItemVendaRequest;
@@ -17,38 +16,32 @@ class ItemVendaController extends Controller
      */
     public function index()
     {
-        //
+        $itemVenda = ItemVenda::all();
+
+        return response()->json($itemVenda, 200);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreItemVendaRequest $request)
     {
         try {
-            $request->validate([
-                'produto_id' => 'required|exists:produtos,id',
-                'venda_id' => 'required|exists:vendas,id',
-                'qtde_produtos' => 'numeric|min:1',
-            ]);
-            
             DB::beginTransaction();
-    
+
             $produto = Produto::findOrFail($request->produto_id);
             
-            $itemVenda = new ItemVenda();
-            $itemVenda->produto_id = $request->produto_id;
-            $itemVenda->venda_id = $request->venda_id;
-            $itemVenda->quantidade = $request->qtde_produtos;
-            $itemVenda->preco = $request->qtde_produtos * $produto->preco;
-            $itemVenda->save();
+            $dados = $request->validated();
+            $dados += ['preco' => $request->quantidade * $produto->preco];
+            
+            $itemVenda = ItemVenda::create($dados);
     
             $venda = Venda::findOrFail($request->venda_id);
-            $venda->total_venda += $request->qtde_produtos * $produto->preco;
+            $venda->total_venda += $itemVenda->preco;
             $venda->update();
-    
+
             DB::commit();
-    
+
             return response()->json($itemVenda, 201);
         } catch (\Exception $e) {
             DB::rollback();
@@ -68,48 +61,38 @@ class ItemVendaController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, ItemVenda $itemVenda)
+    public function update(UpdateItemVendaRequest $request, ItemVenda $itemVenda)
     {
         try {
             DB::beginTransaction();
+
+            $dados = $request->validated();
+            $produto_id = $request->produto_id;
+            $qtde_produtos = $request->quantidade;
             
-            $request->validate([
-                'produto_id' => 'required|exists:produtos,id',
-                'qtde_produtos' => 'numeric|min:1',
-            ]);
-            // alterar produto id
-            if ($itemVenda->produto_id != $request->produto_id) {
-                $produto = Produto::findOrFail($request->produto_id);
-    
-                $venda = Venda::findOrFail($itemVenda->venda_id);
-                $venda->total_venda -= $itemVenda->preco;
-                $venda->total_venda += $request->qtde_produtos * $produto->preco;
-    
-                $itemVenda->produto_id = $request->produto_id;
-                $itemVenda->quantidade = $request->qtde_produtos;
-                $itemVenda->preco = $request->qtde_produtos * $produto->preco;
-    
-                $venda->update();
-                $itemVenda->update();
-
-                DB::commit();
-                
-                return response()->json('O item da lista de compras foi atualizado com sucesso', 200);
+            $venda = Venda::findOrFail($itemVenda->venda_id);
+            
+            if ($itemVenda->produto_id != $produto_id) {
+                $produto = Produto::findOrFail($produto_id);
+            
+                $totalItemVenda = $qtde_produtos * $produto->preco;
+            
+                $venda->total_venda += $totalItemVenda - $itemVenda->preco;
+                $itemVenda->update(array_merge($dados, ['preco' => $totalItemVenda]));
             } else {
-                $venda = Venda::findOrFail($itemVenda->venda_id);
-                $venda->total_venda -= $itemVenda->preco;
-                $venda->total_venda += $request->qtde_produtos * ($itemVenda->preco / $itemVenda->quantidade);
-
-                $itemVenda->preco = $request->qtde_produtos * ($itemVenda->preco / $itemVenda->quantidade);
-                $itemVenda->quantidade = $request->qtde_produtos;
-    
-                $venda->update();
-                $itemVenda->update();
-
-                DB::commit();
-                
-                return response()->json('O item da lista de compras foi atualizado com sucesso', 200);
+                $totalItemVenda = $qtde_produtos * ($itemVenda->preco / $itemVenda->quantidade);
+                $venda->total_venda += $totalItemVenda - $itemVenda->preco;
+            
+                $itemVenda->preco = $totalItemVenda;
+                $itemVenda->quantidade = $qtde_produtos;
             }
+            
+            $venda->update();
+            $itemVenda->update();
+            
+            DB::commit();
+            
+            return response()->json($itemVenda, 200);
         } catch (\Exception $e) {
             DB::rollback();
         

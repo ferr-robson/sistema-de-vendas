@@ -11,7 +11,7 @@ class UpdateItemVendaRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,7 +22,8 @@ class UpdateItemVendaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'produto_id' => 'required|exists:produtos,id',
+            'quantidade' => 'numeric|min:1'
         ];
     }
 }

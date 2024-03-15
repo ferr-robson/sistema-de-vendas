@@ -11,7 +11,7 @@ class StoreItemVendaRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,7 +22,9 @@ class StoreItemVendaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'produto_id' => 'required|exists:produtos,id',
+            'venda_id' => 'required|exists:vendas,id',
+            'quantidade' => 'numeric|min:1',
         ];
     }
 }
