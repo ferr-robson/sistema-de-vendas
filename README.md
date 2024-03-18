@@ -66,12 +66,42 @@ php artisan serve
 ## Rotas utilizadas e cofigurações do request
 
 As rotas utilizadas, em sua maioria, foram criadas com o padrão Route::resource. As exceções que fogem desse padrão são as rotas de login, e a rota de PDF-venda
-Rotas que esperam autenticação /cliente, /produto, /venda, /forma-pagamento, /item-venda, /parcela. Elas esperam, no cabeçalho da requisição, a chave 'Authorization', com o valor 'Bearer {token retornado pela rota de login}'
+Rotas que esperam autenticação /cliente, /produto, /venda, /forma-pagamento, /item-venda, /parcela. Elas esperam, no cabeçalho da requisição, a chave 'Authorization', com o valor 'Bearer {token retornado pela rota de login}'. Exemplo: 'Bearer 1|OVR1ywGyyyIuTpRejMyvVBL76TyEOVwMa6g26I7L16f55ff6'
+
+### Parâmetros esperados por cada rota
+
+/usuario
+post: 'name', 'email', 'password', 'password_confirmation'
+put/patch: 'name', 'email', 'password'
+
+/cliente
+post: 'nome', 'email'
+put/patch: 'nome', 'email'
+
+/produto
+post: 'nome', 'preco'
+put/patch: 'nome', 'preco'
+
+/venda
+post: 'cliente' (id do cliente), 'forma_pagamento' (id de uma das formas de pagamento), 'total_venda' (valor total da venda), 'parcelado' (valor booleano), 'produtos' (array dos produtos comprados, onde cada item do array é um array que possui os campos 'produto_id' e 'quantidade'), 'qtde_parcelas'
+put/patch: 'cliente' (id do cliente), 'forma_pagamento' (id de uma das formas de pagamento), 'total_venda' (valor total da venda), 'parcelado' (valor booleano), 'produtos' (array dos produtos comprados, onde cada item do array é um array que possui os campos 'produto_id' e 'quantidade'), 'qtde_parcelas'
+
+/forma-pagamento
+post: 'nome'
+put/patch: 'nome'
+
+/item-venda
+post: 'produto_id', 'venda_id', 'quantidade' (quantidade de itens adicionados)
+put/patch: 'produto_id', 'quantidade' (quantidade de itens)
+
+/parcela
+post: 'venda_id', 'data_vencimento', 'valor_parcela'
+put/patch: 'venda_id', 'data_vencimento', 'valor_parcela'
 
 ### Rota de login
 
 localhost:8000/api/login
-Espera os campos email e password, referentes à um usuário (vendedor) que exista no banco de dados
+Espera os parâmetros 'email' e 'password', referentes à um usuário (vendedor) que exista no banco de dados
 
 ### Rota PDF-venda
 
@@ -79,3 +109,7 @@ localhost:8000/pdf-venda/{id}
 Ira gerar um PDF view. Basta passar o id de uma venda existente, no link.
 
 ## Testes 
+
+```sh
+php artisan test
+```
