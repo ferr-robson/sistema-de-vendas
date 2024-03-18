@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 
+use Barryvdh\DomPDF\Facade\Pdf;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -15,4 +17,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
+});
+
+Route::get('/pdf-venda/{id}', function ($id) {
+    $controlador = new App\Http\Controllers\VendaController;
+    $item = App\Models\Venda::findOrFail($id);
+    $jsonResponse = $controlador->show($item);
+    $data = json_decode($jsonResponse->content(), true);
+    $pdf = Pdf::loadView('pdf_vendas', $data);
+    return $pdf->stream();
 });

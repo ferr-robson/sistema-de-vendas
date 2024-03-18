@@ -19,7 +19,7 @@ class VendaController extends Controller
      */
     public function index()
     {
-        $vendas = Venda::with('itens')->with('parcelas')->get();
+        $vendas = Venda::with('itens')->with('parcelas')->with('vendedor')->with('forma_pagamento')->get();
 
         return response()->json($vendas, 200);
     }
@@ -96,7 +96,7 @@ class VendaController extends Controller
      */
     public function show(Venda $venda)
     {
-        $venda->load('itens', 'parcelas');
+        $venda->load('itens', 'parcelas', 'vendedor', 'forma_pagamento');
 
         return response()->json($venda, 200);
     }

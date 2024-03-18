@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\Parcela;
 use App\Models\Produto;
+use App\Models\User;
 
 class Venda extends Model
 {
@@ -23,5 +25,15 @@ class Venda extends Model
     public function itens(): BelongsToMany
     {
         return $this->belongsToMany(Produto::class, 'item_vendas')->withPivot('quantidade', 'preco');
+    }
+
+    public function vendedor(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function forma_pagamento(): BelongsTo
+    {
+        return $this->belongsTo(FormaPagamento::class);
     }
 }
