@@ -71,31 +71,45 @@ Rotas que esperam autenticação /cliente, /produto, /venda, /forma-pagamento, /
 ### Parâmetros esperados por cada rota
 
 /usuario
+
 post: 'name', 'email', 'password', 'password_confirmation'
+
 put/patch: 'name', 'email', 'password'
 
 /cliente
+
 post: 'nome', 'email'
+
 put/patch: 'nome', 'email'
 
 /produto
+
 post: 'nome', 'preco'
+
 put/patch: 'nome', 'preco'
 
 /venda
+
 post: 'cliente' (id do cliente), 'forma_pagamento' (id de uma das formas de pagamento), 'total_venda' (valor total da venda), 'parcelado' (valor booleano), 'produtos' (array dos produtos comprados, onde cada item do array é um array que possui os campos 'produto_id' e 'quantidade'), 'qtde_parcelas'
+
 put/patch: 'cliente' (id do cliente), 'forma_pagamento' (id de uma das formas de pagamento), 'total_venda' (valor total da venda), 'parcelado' (valor booleano), 'produtos' (array dos produtos comprados, onde cada item do array é um array que possui os campos 'produto_id' e 'quantidade'), 'qtde_parcelas'
 
 /forma-pagamento
+
 post: 'nome'
+
 put/patch: 'nome'
 
 /item-venda
+
 post: 'produto_id', 'venda_id', 'quantidade' (quantidade de itens adicionados)
+
 put/patch: 'produto_id', 'quantidade' (quantidade de itens)
 
 /parcela
+
 post: 'venda_id', 'data_vencimento', 'valor_parcela'
+
 put/patch: 'venda_id', 'data_vencimento', 'valor_parcela'
 
 ### Rota de login
