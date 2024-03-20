@@ -1,66 +1,135 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sistema de Vendas - Backend
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Índice
 
-## About Laravel
+- [Sobre o sistema](#sobre-o-sistema)
+- [Como iniciar o sistema localmente em ambiente de desenvolvimento](#como-iniciar-o-sistema-localmente-em-ambiente-de-desenvolvimento)
+- [Rotas utilizadas e cofigurações do request](#rotas-utilizadas-e-cofigurações-do-request)
+- [Teste](#testes)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Sobre o Sistema
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+O sistema de vendas apresentado nesse projeto busca gerenciar o processo de vendas de uma loja. Nele, é possível fazer:
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Cadastro e atualização dos vendedores
+- Cadastro e atualização dos clientes
+- Cadastro e atualização das formas de pagamento, além das já existentes no sistema (Pix, Boleto, Cartão de Crédito, Cartão de Débito)
+- Cadastro e atualização das vendas 
+- Cadastro e atualização dos produtos
+- Adição, edição e remoção de parcelas
+- Adição, edição e remoção de itens do carrinho de compras
+- Gerar um PDF com os dados referentes à uma venda em específico
 
-## Learning Laravel
+Esta documentação refere-se ao backend da aplicação e foi desenvolvida com o framework [Laravel](https://laravel.com/).
+ 
+## Como iniciar o sistema localmente em ambiente de desenvolvimento
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+1. Clonar a última versão do projeto
+2. Instalar [MySQL](https://www.mysql.com/products/workbench/), [PHP](https://www.php.net/) e [Composer](https://getcomposer.org/)
+3. Acessar, via terminal, o diretório com o projeto clonado e executar o comando:
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+```sh
+composer global require laravel/installer
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+4.  Baixar as dependências do projeto, com o comando
 
-## Laravel Sponsors
+```sh
+composer install
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+5. Crie um banco de dados, no MySQL
+6. Duplique o arquivo .env.example, encontrado na raiz do projeto e renomeie a cópia para .env
+7. No arquivo .env, configure as variáveis DB_DATABASE e DB_PASSWORD, informando o nome do banco de dados que foi criado e a senha do MySQL, como mostra o exemplo abaixo:
 
-### Premium Partners
+```sh
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=congressosufla_api
+DB_USERNAME=root
+DB_PASSWORD=
+```
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+8. Execute as migrações e as seeders com o comando:
 
-## Contributing
+```sh
+php artisan migrate --seed
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+9. Inicie a api localmente
 
-## Code of Conduct
+```sh
+php artisan serve
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Rotas utilizadas e cofigurações do request
 
-## Security Vulnerabilities
+As rotas utilizadas, em sua maioria, foram criadas com o padrão Route::resource. As exceções que fogem desse padrão são as rotas de login, e a rota de PDF-venda
+Rotas que esperam autenticação /cliente, /produto, /venda, /forma-pagamento, /item-venda, /parcela. Elas esperam, no cabeçalho da requisição, a chave 'Authorization', com o valor 'Bearer {token retornado pela rota de login}'. Exemplo: 'Bearer 1|OVR1ywGyyyIuTpRejMyvVBL76TyEOVwMa6g26I7L16f55ff6'
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Parâmetros esperados por cada rota
 
-## License
+/usuario
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+post: 'name', 'email', 'password', 'password_confirmation'
+
+put/patch: 'name', 'email', 'password'
+
+
+/cliente
+
+post: 'nome', 'email'
+
+put/patch: 'nome', 'email'
+
+
+/produto
+
+post: 'nome', 'preco'
+
+put/patch: 'nome', 'preco'
+
+
+/venda
+
+post: 'cliente' (id do cliente), 'forma_pagamento' (id de uma das formas de pagamento), 'total_venda' (valor total da venda), 'parcelado' (valor booleano), 'produtos' (array dos produtos comprados, onde cada item do array é um array que possui os campos 'produto_id' e 'quantidade'), 'qtde_parcelas'
+
+put/patch: 'cliente' (id do cliente), 'forma_pagamento' (id de uma das formas de pagamento), 'total_venda' (valor total da venda), 'parcelado' (valor booleano), 'produtos' (array dos produtos comprados, onde cada item do array é um array que possui os campos 'produto_id' e 'quantidade'), 'qtde_parcelas'
+
+
+/forma-pagamento
+
+post: 'nome'
+
+put/patch: 'nome'
+
+
+/item-venda
+
+post: 'produto_id', 'venda_id', 'quantidade' (quantidade de itens adicionados)
+
+put/patch: 'produto_id', 'quantidade' (quantidade de itens)
+
+
+/parcela
+
+post: 'venda_id', 'data_vencimento', 'valor_parcela'
+
+put/patch: 'venda_id', 'data_vencimento', 'valor_parcela'
+
+### Rota de login
+
+localhost:8000/api/login
+Espera os parâmetros 'email' e 'password', referentes à um usuário (vendedor) que exista no banco de dados
+
+### Rota PDF-venda
+
+localhost:8000/pdf-venda/{id}
+Ira gerar um PDF view. Basta passar o id de uma venda existente, no link.
+
+## Testes 
+
+```sh
+php artisan test
+```
