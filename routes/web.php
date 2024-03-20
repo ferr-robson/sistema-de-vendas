@@ -15,10 +15,6 @@ use Barryvdh\DomPDF\Facade\Pdf;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
-
 Route::get('/pdf-venda/{id}', function ($id) {
     $controlador = new App\Http\Controllers\VendaController;
     $item = App\Models\Venda::findOrFail($id);
