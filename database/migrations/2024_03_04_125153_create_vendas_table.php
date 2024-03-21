@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('cliente_id')->nullable();
             $table->unsignedBigInteger('vendedor_id');
             $table->unsignedBigInteger('forma_pagamento_id');
-            $table->date('data_venda');
+            $table->dateTime('data_venda')->default(now());
             $table->decimal('total_venda', 8, 2);
             $table->boolean('parcelado')->default(false);
             $table->timestamps();

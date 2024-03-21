@@ -38,7 +38,6 @@ class VendaController extends Controller
                 'cliente_id' => $request->cliente,
                 'vendedor_id' => Auth::user()->id,
                 'forma_pagamento_id' => $request->forma_pagamento,
-                'data_venda' => now(),
                 'total_venda' => $request->total_venda,
                 'parcelado' => $request->parcelado
             ]);
