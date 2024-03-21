@@ -12,9 +12,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        \App\Models\FormaPagamento::factory()->create(['nome' => 'Cartão de Crédito']);
-        \App\Models\FormaPagamento::factory()->create(['nome' => 'Cartão de Débito']);
-        \App\Models\FormaPagamento::factory()->create(['nome' => 'Pix']);
-        \App\Models\FormaPagamento::factory()->create(['nome' => 'Boleto']);
+        $this->call(ProdutoSeeder::class);
+        $this->call(FormaPagamentoSeeder::class);
+        $this->call(ClienteSeeder::class);
+        $this->call(UserSeeder::class);
     }
 }
