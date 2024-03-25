@@ -22,9 +22,8 @@ class StoreVendaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'cliente' => 'nullable|exists:clientes,id',
-            'forma_pagamento' => 'required|exists:forma_pagamentos,id',
-            'total_venda' => 'required|numeric|min:0',
+            'cliente_id' => 'nullable|exists:clientes,id',
+            'forma_pagamento_id' => 'required|exists:forma_pagamentos,id',
             'parcelado' => 'boolean',
             'produtos' => 'required|array', 
             'produtos.*.produto_id' => 'required|exists:produtos,id', 

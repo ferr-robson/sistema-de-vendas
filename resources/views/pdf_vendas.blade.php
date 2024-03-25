@@ -22,7 +22,7 @@
 </head>
 <body>
 
-<h1>Detalhes da Compra #{{$id}}</h1>
+<h1>Detalhes da Compra</h1>
 <table>
     <thead>
         <tr>
@@ -35,7 +35,7 @@
     </thead>
     <tbody>
         <tr>
-            <td>3</td>
+            <td>{{ $id }}</td>
             <td>{{ $vendedor['name'] }}</td>
             <td>{{ $forma_pagamento['nome'] }} {{ $parcelado ? '(Parcelado)' : '(À vista)' }}</td>
             <td>{{ \Carbon\Carbon::parse($data_venda)->format('d/m/Y') }}</td>

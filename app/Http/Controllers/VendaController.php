@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Requests\StoreVendaRequest;
 use App\Http\Requests\UpdateVendaRequest;
+use Illuminate\Database\Eloquent\Collection;
+use Carbon\Carbon;
 
 class VendaController extends Controller
 {
@@ -29,56 +31,55 @@ class VendaController extends Controller
      */
     public function store(StoreVendaRequest $request)
     {
-        try {
-            $request->validated();
+        $venda = Venda::make($request->validated());
+        $venda->setAttribute('vendedor_id', Auth::user()->id);
+
+        // Preco total a ser pago pela compra
+        $precoTotalVenda = 0;
+        
+        // Lista de itens da venda
+        $produtoVenda = [];
+        
+        // Monta o vetor do attach em `$produtoVenda` a partir do `$request->produtos`
+        $produtos = collect($request->produtos);
+        $produtos->each(function ($produto) use (&$produtoVenda, &$precoTotalVenda) {
+            $item = Produto::findOrFail($produto['produto_id']);
             
-            DB::beginTransaction();
-            
-            $venda = Venda::create([
-                'cliente_id' => $request->cliente,
-                'vendedor_id' => Auth::user()->id,
-                'forma_pagamento_id' => $request->forma_pagamento,
-                'total_venda' => $request->total_venda,
-                'parcelado' => $request->parcelado
-            ]);
-        
-            $validacaoPrecoTotal = 0;
+            $precoTotalProdutoVenda = $item->preco * $produto['quantidade'];
 
-            // Preencher dados da tebela de ProdutoVenda
-            foreach ($request->produtos as $produto) {
-                $item = Produto::findOrFail($produto['produto_id']);
-        
-                ItemVenda::create([
-                    'venda_id' => $venda->id,
-                    'produto_id' => $produto['produto_id'],
-                    'quantidade' => $produto['quantidade'],
-                    'preco' => $item->preco * $produto['quantidade']
-                ]);
+            $produtoVenda += [
+                $produto['produto_id'] => [
+                    'quantidade' => $produto['quantidade'], 
+                    'preco' => $precoTotalProdutoVenda
+                    ]
+                ];
 
-                $validacaoPrecoTotal += $item->preco * $produto['quantidade'];
-            }
+            $precoTotalVenda += $precoTotalProdutoVenda;
+        });
 
-            // verifica se o valor informado e diferente que a soma dos valores dos produtos
-            if (abs($validacaoPrecoTotal - (double)$venda->total_venda) > 0.001) {
-                DB::rollback();
+        $request->merge(['total_venda' => $precoTotalVenda]);
+        $venda->setAttribute('total_venda', $precoTotalVenda);
 
-                return response()->json('ERRO: Valor total da venda é incompatível.', 400);
-            }
+        if ((boolean)$venda->parcelado) {
+            $parcelas = collect();
+
+            $vencimentoParcela = now();
         
-            // Preencher dados da tabela de Parcelas, se necessário
-            if ($request->parcelado) {
-                $vencimentoParcela = now()->addMonth();
-        
-                for ($i = 0; $i < $request->qtde_parcelas; $i++) {
-                    Parcela::create([
-                        'venda_id' => $venda->id,
-                        'data_vencimento' => $vencimentoParcela,
+            $parcelas = Collection::times($request->qtde_parcelas, 
+                function ($index) use ($vencimentoParcela, $request) {
+                    return new Parcela([
+                        'data_vencimento' => $vencimentoParcela->copy()->addMonths($index),
                         'valor_parcela' => $request->total_venda / $request->qtde_parcelas,
                     ]);
-                            
-                    $vencimentoParcela->addMonth();
-                }
-            }
+                });
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $venda->save();
+            $venda->parcelado ? $venda->parcelas()->saveMany($parcelas) : null;
+            $venda->itens()->attach($produtoVenda);
 
             DB::commit();
 
@@ -105,42 +106,43 @@ class VendaController extends Controller
      */
     public function update(UpdateVendaRequest $request, Venda $venda)
     {
+        $vendaAtualizada = $request->validated();
+        
+        $parcelas = collect();
+
+        // caso decida-se parcelar a compra agora
+        if ($request->parcelado && ($request->parcelado != (boolean)$venda->parcelado)) {
+
+            $vencimentoParcela = Carbon::parse($venda->data_venda);
+            $request->merge(['total_venda' => $venda->total_venda]);
+
+            $parcelas = Collection::times($request->qtde_parcelas, 
+                function ($index) use ($vencimentoParcela, $request) {
+                    return new Parcela([
+                        'data_vencimento' => $vencimentoParcela->copy()->addMonths($index),
+                        'valor_parcela' => $request->total_venda / $request->qtde_parcelas,
+                    ]);
+                });
+        }
+
         try {
             DB::beginTransaction();
 
-            $dados = $request->validated();
-
-            // caso decisa-se parcelar a compra agora
-            if ($request->parcelado && ($request->parcelado != $venda->parcelado)) {
-                $vencimentoParcela = \DateTime::createFromFormat('Y-m-d', $venda->data_venda);
-                $vencimentoParcela->add(new \DateInterval('P1M'));
-                
-                for ($i = 0; $i < $request->qtde_parcelas; $i++) {
-                    Parcela::create([
-                        'venda_id' => $venda->id,
-                        'data_vencimento' => $vencimentoParcela,
-                        'valor_parcela' => $request->total_venda / $request->qtde_parcelas,
-                    ]);
-        
-                    $vencimentoParcela->add(new \DateInterval('P1M'));
-                }
-            }
-            
-            $venda->update($dados);
-            
             // se a compra foi inicialmente parcelada e agora eh a vista
-            if (!$request->parcelado && ($request->parcelado != $venda->parcelado)) {
+            if (!$request->parcelado && ($request->parcelado != (boolean)$venda->parcelado)) {
                 Parcela::where('venda_id', $venda->id)->delete();
             }
+
+            $venda->update($vendaAtualizada);
+            $request->parcelado ? $venda->parcelas()->saveMany($parcelas) : null;
 
             DB::commit();
 
             return response()->json($venda, 200);
         } catch (\Exception $e) {
-            // se houve erro, dar rollback na transacao
             DB::rollback();
         
-            return response()->json('Erro ao inserir registro de venda: ' . $e->getMessage(), 500);
+            return response()->json('Erro ao atualizar registro de venda: ' . $e->getMessage(), 500);
         }
     }
 
@@ -154,3 +156,43 @@ class VendaController extends Controller
         return response()->json('Registro de venda removido com sucesso.', 200);
     }
 }
+
+/*
+try {
+    DB::beginTransaction();
+
+    $dados = $request->validated();
+
+    // caso decisa-se parcelar a compra agora
+    if ($request->parcelado && ($request->parcelado != $venda->parcelado)) {
+        $vencimentoParcela = \DateTime::createFromFormat('Y-m-d', $venda->data_venda);
+        $vencimentoParcela->add(new \DateInterval('P1M'));
+        
+        for ($i = 0; $i < $request->qtde_parcelas; $i++) {
+            Parcela::create([
+                'venda_id' => $venda->id,
+                'data_vencimento' => $vencimentoParcela,
+                'valor_parcela' => $request->total_venda / $request->qtde_parcelas,
+            ]);
+
+            $vencimentoParcela->add(new \DateInterval('P1M'));
+        }
+    }
+    
+    $venda->update($dados);
+    
+    // se a compra foi inicialmente parcelada e agora eh a vista
+    if (!$request->parcelado && ($request->parcelado != $venda->parcelado)) {
+        Parcela::where('venda_id', $venda->id)->delete();
+    }
+
+    DB::commit();
+
+    return response()->json($venda, 200);
+} catch (\Exception $e) {
+    // se houve erro, dar rollback na transacao
+    DB::rollback();
+
+    return response()->json('Erro ao inserir registro de venda: ' . $e->getMessage(), 500);
+}
+*/

@@ -50,9 +50,8 @@ class VendaTest extends TestCase
         ]);
 
         $dados = [
-            'cliente' => null,
-            'forma_pagamento' => 1,
-            'total_venda' => 10.2,
+            'cliente_id' => null,
+            'forma_pagamento_id' => 1,
             'parcelado' => true,
             'produtos' => [
                 ['produto_id' => 1, 'quantidade' => 4],
@@ -81,7 +80,6 @@ class VendaTest extends TestCase
         $dados = [
             'cliente' => 1,
             'forma_pagamento' => 1,
-            'total_venda' => 10.2,
             'parcelado' => true,
             'produtos' => [
                 ['produto_id' => 1, 'quantidade' => 4],
@@ -106,7 +104,6 @@ class VendaTest extends TestCase
         $dados = [
             'cliente' => null,
             'forma_pagamento' => 1,
-            'total_venda' => 10.2,
             'parcelado' => true,
             'produtos' => [
                 ['produto_id' => 1, 'quantidade' => 4],
@@ -117,35 +114,6 @@ class VendaTest extends TestCase
         $response = $this->post('/api/venda',  $dados);
 
         $response->assertInvalid();
-    }
-
-    public function test_criar_venda_com_totalvenda_incorreto_gera_erro(): void
-    {
-        $this->criarUserAtor();
-
-        FormaPagamento::create([
-            'nome' => 'Pix'
-        ]);
-
-        Produto::create([
-            'nome' => 'Produto 1',
-            'preco' => 2.55
-        ]);
-
-        $dados = [
-            'cliente' => null,
-            'forma_pagamento' => 1,
-            'total_venda' => 10.3,
-            'parcelado' => true,
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 4],
-            ],
-            'qtde_parcelas' => 5
-        ];
-
-        $response = $this->post('/api/venda',  $dados);
-
-        $response->assertStatus(400);
     }
 
     public function test_criar_venda_com_produto_nao_existente_gera_erro(): void
@@ -244,7 +212,6 @@ class VendaTest extends TestCase
         $dados = [
             'cliente_id' => null,
             'forma_pagamento_id' => 1,
-            'total_venda' => 2.55,
             'parcelado' => false,
             'produtos' => [
                 ['produto_id' => 1, 'quantidade' => 1],
@@ -291,7 +258,6 @@ class VendaTest extends TestCase
         $dados = [
             'cliente_id' => 1,
             'forma_pagamento_id' => 1,
-            'total_venda' => 2.55,
             'parcelado' => false,
             'produtos' => [
                 ['produto_id' => 1, 'quantidade' => 1],
@@ -338,7 +304,6 @@ class VendaTest extends TestCase
         $dados = [
             'cliente_id' => null,
             'forma_pagamento_id' => 2,
-            'total_venda' => 2.55,
             'parcelado' => false,
             'produtos' => [
                 ['produto_id' => 1, 'quantidade' => 1],
