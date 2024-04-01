@@ -2,17 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Models\Venda;
 use App\Models\Parcela;
 use App\Models\Produto;
-use App\Models\ItemVenda;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Requests\StoreVendaRequest;
 use App\Http\Requests\UpdateVendaRequest;
 use Illuminate\Database\Eloquent\Collection;
-use Carbon\Carbon;
 
 class VendaController extends Controller
 {
@@ -156,43 +154,3 @@ class VendaController extends Controller
         return response()->json('Registro de venda removido com sucesso.', 200);
     }
 }
-
-/*
-try {
-    DB::beginTransaction();
-
-    $dados = $request->validated();
-
-    // caso decisa-se parcelar a compra agora
-    if ($request->parcelado && ($request->parcelado != $venda->parcelado)) {
-        $vencimentoParcela = \DateTime::createFromFormat('Y-m-d', $venda->data_venda);
-        $vencimentoParcela->add(new \DateInterval('P1M'));
-        
-        for ($i = 0; $i < $request->qtde_parcelas; $i++) {
-            Parcela::create([
-                'venda_id' => $venda->id,
-                'data_vencimento' => $vencimentoParcela,
-                'valor_parcela' => $request->total_venda / $request->qtde_parcelas,
-            ]);
-
-            $vencimentoParcela->add(new \DateInterval('P1M'));
-        }
-    }
-    
-    $venda->update($dados);
-    
-    // se a compra foi inicialmente parcelada e agora eh a vista
-    if (!$request->parcelado && ($request->parcelado != $venda->parcelado)) {
-        Parcela::where('venda_id', $venda->id)->delete();
-    }
-
-    DB::commit();
-
-    return response()->json($venda, 200);
-} catch (\Exception $e) {
-    // se houve erro, dar rollback na transacao
-    DB::rollback();
-
-    return response()->json('Erro ao inserir registro de venda: ' . $e->getMessage(), 500);
-}
-*/

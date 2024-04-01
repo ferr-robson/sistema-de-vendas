@@ -17,7 +17,7 @@ class FormaPagamentoFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'nome' => fake()->text(fake()->numberBetween(5, 25))
         ];
     }
 }

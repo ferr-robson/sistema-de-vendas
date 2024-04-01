@@ -2,6 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Models\User;
+use App\Models\Produto;
+use App\Models\FormaPagamento;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -16,8 +19,15 @@ class VendaFactory extends Factory
      */
     public function definition(): array
     {
+        $parcelado = $this->faker->randomElement([true, false]);
+
         return [
-            //
+            'cliente_id' => null,
+            'forma_pagamento_id' => FormaPagamento::factory()->create(),
+            'parcelado' => $parcelado,
+            'total_venda' => $this->faker->randomFloat(2, 10, 100),
+            'vendedor_id' => User::factory()->create(),
+            'data_venda' => now()
         ];
     }
 }

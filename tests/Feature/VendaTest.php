@@ -2,11 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Models\FormaPagamento;
-use App\Models\Produto;
-use App\Models\Venda;
 use Tests\TestCase;
 use App\Models\User;
+use App\Models\Venda;
+use App\Models\Produto;
+use Illuminate\Http\Request;
+use App\Models\FormaPagamento;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -14,341 +15,159 @@ class VendaTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * Cria um usuario a ser utilizado como ator nas acoes de request
-     */
-    private function criarUserAtor() {
-        $user = User::create([
-            'name' => 'João',
-            'email' => 'joao123@mail.com',
-            'password' => 'password'
-        ]);
+    private User $user;
 
-        $this->actingAs($user);
+    private Array $startSetup;
+
+    private Array $dadosVenda;
+
+    private int $idInvalido;
+
+    protected function setup(): void
+    {
+        parent::setUp();
+
+        $this->user = User::factory()->create();
+
+        $this->startSetup = [
+            'user' => User::factory()->create(),
+            'produto' => Produto::factory()->create(),
+            'cliente' => '',
+            'formaPagamento' => FormaPagamento::factory()->create(),
+            'venda' => Venda::factory()->create()
+        ];
+
+        $this->dadosVenda = [
+            'cliente_id' => null,
+            'forma_pagamento_id' => $this->startSetup['formaPagamento']->id,
+            'parcelado' => true,
+            'produtos' => [
+                [
+                    'produto_id' => $this->startSetup['produto']->id, 
+                    'quantidade' => rand(1,5)
+                ],
+            ],
+            'qtde_parcelas' => rand(1,12)
+        ];
+
+        $this->idInvalido = 100;
     }
 
     public function test_venda_index_gera_ok_response(): void
     {
-        $this->criarUserAtor();
+        $response = $this->actingAs($this->user)->getJson('/api/venda/');
 
-        $response = $this->get('/api/venda/');
-
-        $response->assertValid();
+        $response->assertStatus(200);
     }
     
     public function test_criar_venda_sem_erros(): void
     {
-        $this->criarUserAtor();
-
-        FormaPagamento::create([
-            'nome' => 'Pix'
-        ]);
-
-        Produto::create([
-            'nome' => 'Produto 1',
-            'preco' => 2.55
-        ]);
-
-        $dados = [
+        $dadosEsperados = [
             'cliente_id' => null,
-            'forma_pagamento_id' => 1,
+            'vendedor_id' => 1,
+            'forma_pagamento_id' => $this->startSetup['formaPagamento']->id,
+            'total_venda' => $this->startSetup['produto']->preco * $this->dadosVenda['produtos'][0]['quantidade'],
             'parcelado' => true,
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 4],
-            ],
-            'qtde_parcelas' => 5
         ];
+        
+        $response = $this->actingAs($this->user)->postJson('/api/venda',  $this->dadosVenda);
 
-        $response = $this->post('/api/venda',  $dados);
-
-        $response->assertValid();
+        $response->assertStatus(201);
+        $response->assertJson($dadosEsperados);
+        $this->assertDatabaseHas('vendas', $dadosEsperados);
     }
 
     public function test_criar_venda_com_id_do_cliente_invalido_gera_erro(): void
     {
-        $this->criarUserAtor();
-
-        FormaPagamento::create([
-            'nome' => 'Pix'
-        ]);
-
-        Produto::create([
-            'nome' => 'Produto 1',
-            'preco' => 2.55
-        ]);
-
-        $dados = [
-            'cliente' => 1,
-            'forma_pagamento' => 1,
-            'parcelado' => true,
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 4],
-            ],
-            'qtde_parcelas' => 5
-        ];
-
-        $response = $this->post('/api/venda',  $dados);
-
-        $response->assertInvalid();
+        $this->VerificarCampoInvalido('cliente_id', Request::METHOD_POST);
     }
 
     public function test_criar_venda_com_forma_de_pagamento_invalido_gera_erro(): void
     {
-        $this->criarUserAtor();
-
-        Produto::create([
-            'nome' => 'Produto 1',
-            'preco' => 2.55
-        ]);
-
-        $dados = [
-            'cliente' => null,
-            'forma_pagamento' => 1,
-            'parcelado' => true,
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 4],
-            ],
-            'qtde_parcelas' => 5
-        ];
-
-        $response = $this->post('/api/venda',  $dados);
-
-        $response->assertInvalid();
+        $this->VerificarCampoInvalido('forma_pagamento_id', Request::METHOD_POST);
     }
 
     public function test_criar_venda_com_produto_nao_existente_gera_erro(): void
     {
-        $this->criarUserAtor();
+        $dados = $this->dadosVenda;
+        $dados['produtos'][0]['produto_id'] = $this->idInvalido;
 
-        FormaPagamento::create([
-            'nome' => 'Pix'
-        ]);
+        $response = $this->actingAs($this->user)->postJson('/api/venda',  $dados);
 
-        $dados = [
-            'cliente' => null,
-            'forma_pagamento' => 1,
-            'total_venda' => 10.2,
-            'parcelado' => true,
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 4],
-            ],
-            'qtde_parcelas' => 5
-        ];
-
-        $response = $this->post('/api/venda',  $dados);
-
-        $response->assertInvalid();
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('produtos.0.produto_id');
     }
 
     public function test_venda_show_gera_ok_response(): void
     {
-        $this->criarUserAtor();
+        $response = $this->actingAs($this->user)->getJson('/api/venda/1');
 
-        User::create([
-            'name' => 'Vendedor',
-            'email' => 'vendedor@mail.com',
-            'password' => 'password'
-        ]);
-
-        FormaPagamento::create([
-            'nome' => 'Pix'
-        ]);
-
-        Produto::create([
-            'nome' => 'Produto 1',
-            'preco' => 2.55
-        ]);
-
-        Venda::create([
-            'cliente' => null,
-            'forma_pagamento_id' => 1,
-            'total_venda' => 10.2,
-            'parcelado' => true,
-            'vendedor_id' => 1,
-            'data_venda' => now(),
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 4],
-            ],
-            'qtde_parcelas' => 5
-        ]);
-
-        $response = $this->get('/api/venda/1');
-
-        $response->assertValid();
+        $response->assertStatus(200);
     }
 
     public function test_atualizar_venda_sem_erros(): void
     {
-        $this->criarUserAtor();
-
-        User::create([
-            'name' => 'Vendedor',
-            'email' => 'vendedor@mail.com',
-            'password' => 'password'
-        ]);
-
-        FormaPagamento::create([
-            'nome' => 'Pix'
-        ]);
-
-        Produto::create([
-            'nome' => 'Produto 1',
-            'preco' => 2.55
-        ]);
-
-        Venda::create([
-            'cliente' => null,
-            'forma_pagamento_id' => 1,
-            'total_venda' => 10.2,
-            'parcelado' => true,
-            'vendedor_id' => 1,
-            'data_venda' => now(),
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 4],
-            ],
-            'qtde_parcelas' => 5
-        ]);
-
-        $dados = [
+        $venda = Venda::factory()->create();
+        
+        $novosDados = [
             'cliente_id' => null,
-            'forma_pagamento_id' => 1,
-            'parcelado' => false,
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 1],
-            ],
+            'forma_pagamento_id' => 2,
+            'parcelado' => false
         ];
 
-        $response = $this->put('/api/venda/1', $dados);
-
-        $response->assertValid();
+        $response = $this->actingAs($this->user)->putJson('/api/venda/' . $venda->id, $novosDados);
+        
+        $response->assertStatus(200);
+        
+        $this->assertDatabaseHas('vendas', [
+            'id' => $venda->id,
+            'cliente_id' => null,
+            'vendedor_id' => $venda->vendedor_id,
+            'forma_pagamento_id' => 2,
+            'data_venda' => $venda->data_venda,
+            'total_venda' => $venda->total_venda,
+            'parcelado' => false
+        ]);
     }
 
     public function test_atualizar_venda_com_id_do_cliente_invalido_gera_erro(): void
     {
-        $this->criarUserAtor();
-
-        User::create([
-            'name' => 'Vendedor',
-            'email' => 'vendedor@mail.com',
-            'password' => 'password'
-        ]);
-
-        FormaPagamento::create([
-            'nome' => 'Pix'
-        ]);
-
-        Produto::create([
-            'nome' => 'Produto 1',
-            'preco' => 2.55
-        ]);
-
-        Venda::create([
-            'cliente_id' => null,
-            'forma_pagamento_id' => 1,
-            'total_venda' => 10.2,
-            'parcelado' => true,
-            'vendedor_id' => 1,
-            'data_venda' => now(),
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 4],
-            ],
-            'qtde_parcelas' => 5
-        ]);
-
-        $dados = [
-            'cliente_id' => 1,
-            'forma_pagamento_id' => 1,
-            'parcelado' => false,
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 1],
-            ],
-        ];
-
-        $response = $this->put('/api/venda/1', $dados);
-
-        $response->assertInvalid();
+        $this->VerificarCampoInvalido('cliente_id', Request::METHOD_PUT);
     }
 
     public function test_atualizar_venda_com_forma_de_pagamento_invalido_gera_erro(): void
     {
-        $this->criarUserAtor();
-
-        User::create([
-            'name' => 'Vendedor',
-            'email' => 'vendedor@mail.com',
-            'password' => 'password'
-        ]);
-
-        FormaPagamento::create([
-            'nome' => 'Pix'
-        ]);
-
-        Produto::create([
-            'nome' => 'Produto 1',
-            'preco' => 2.55
-        ]);
-
-        Venda::create([
-            'cliente_id' => null,
-            'forma_pagamento_id' => 1,
-            'total_venda' => 10.2,
-            'parcelado' => true,
-            'vendedor_id' => 1,
-            'data_venda' => now(),
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 4],
-            ],
-            'qtde_parcelas' => 5
-        ]);
-
-        $dados = [
-            'cliente_id' => null,
-            'forma_pagamento_id' => 2,
-            'parcelado' => false,
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 1],
-            ],
-        ];
-
-        $response = $this->put('/api/venda/1', $dados);
-
-        $response->assertInvalid();
+        $this->VerificarCampoInvalido('forma_pagamento_id', Request::METHOD_PUT);
     }
 
     public function test_apagar_venda_gera_ok_response(): void
     {
-        $this->criarUserAtor();
+        $venda = Venda::factory()->create();
 
-        User::create([
-            'name' => 'Vendedor',
-            'email' => 'vendedor@mail.com',
-            'password' => 'password'
-        ]);
-
-        FormaPagamento::create([
-            'nome' => 'Pix'
-        ]);
-
-        Produto::create([
-            'nome' => 'Produto 1',
-            'preco' => 2.55
-        ]);
-
-        Venda::create([
-            'cliente_id' => null,
-            'forma_pagamento_id' => 1,
-            'total_venda' => 10.2,
-            'parcelado' => true,
-            'vendedor_id' => 1,
-            'data_venda' => now(),
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 4],
-            ],
-            'qtde_parcelas' => 5
-        ]);
-
-        $response = $this->delete('/api/venda/1');
+        $response = $this->actingAs($this->user)->delete('/api/venda/' . $venda->id);
 
         $response->assertStatus(200);
+        $this->assertDatabaseMissing('vendas', ['id' => $venda->id]);
+    }
+
+    private function VerificarCampoInvalido ($campo, $metodo, $id = 1): void
+    {
+        $dados = $this->dadosVenda;
+        $dados[$campo] = $this->idInvalido;
+
+        $response = null;
+        switch ($metodo) {
+            case Request::METHOD_PUT:
+                $response = $this->actingAs($this->user)->putJson('/api/venda/' . $id, $dados);
+                break;
+            case Request::METHOD_POST:
+                $response = $this->actingAs($this->user)->postJson('/api/venda/', $dados);
+                break;
+            default:
+                throw new \InvalidArgumentException("Método HTTP inválido: $metodo");
+        }
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors($campo);
     }
 }
