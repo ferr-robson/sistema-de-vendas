@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Models\Venda;
 use App\Models\Produto;
 use App\Models\ItemVenda;
-use App\Models\FormaPagamento;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -15,315 +14,136 @@ class ItemVendaTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function criarUserAtor() {
-        $user = User::create([
-            'name' => 'João',
-            'email' => 'joao123@mail.com',
-            'password' => 'password'
-        ]);
+    private User $user;
 
-        $this->actingAs($user);
-    }  
+    private int $idInvalido;
+
+    private Array $modelos;
+    
+    private Array $errosValidacao;
+    
+    private Array $dadosValidos;
+
+    private Array $dadosInvalidos;
+
+    protected function setup(): void
+    {
+        parent::setUp();
+
+        $this->user = User::factory()->create();
+
+        $this->idInvalido = 1000;
+
+        $this->modelos = [
+            'produto' => Produto::factory()->create(),
+            'itemVenda' => ItemVenda::factory()->create(),
+        ];
+
+        $this->errosValidacao = [
+            "produto_id" => [
+                "The selected produto id is invalid."
+            ],
+            "quantidade" => [
+                "The quantidade field must be at least 1.",
+                "The quantidade field must be a number."
+            ]
+        ];
+
+        $this->dadosInvalidos = [
+            'produto_id' => $this->idInvalido,
+            'quantidade' => '',
+        ];
+
+        $this->dadosValidos = [
+            'produto_id' => $this->modelos['produto']->id,
+            'quantidade' => 1,
+        ];
+    }
 
     public function test_itemvenda_index_gera_ok_response(): void
     {
-        $this->criarUserAtor();
-
-        $response = $this->get('/api/item-venda');
+        $response = $this->actingAs($this->user)->getJson('/api/item-venda');
 
         $response->assertStatus(200);
     }
 
     public function test_itemvenda_store_gera_ok_response(): void
     {
-        $this->criarUserAtor();
+        Venda::factory()->create();
 
-        User::create([
-            'name' => 'Vendedor',
-            'email' => 'vendedor@mail.com',
-            'password' => 'password'
-        ]);
-
-        FormaPagamento::create([
-            'nome' => 'Pix'
-        ]);
-
-        Produto::create([
-            'nome' => 'Produto 1',
-            'preco' => 2.55
-        ]);
-
-        Venda::create([
-            'cliente_id' => null,
-            'forma_pagamento_id' => 1,
-            'total_venda' => 10.2,
-            'parcelado' => true,
-            'vendedor_id' => 1,
-            'data_venda' => now(),
-            'produtos' => [],
-            'qtde_parcelas' => 5
-        ]);
-
-        $dados = [
-            'produto_id' => 1,
-            'venda_id' => 1,
-            'quantidade' => 1,
-        ];
+        $dados = $this->dadosValidos;
+        $dados['venda_id'] = 1;
         
-        $response = $this->post('/api/item-venda', $dados);
+        $response = $this->actingAs($this->user)->postJson('/api/item-venda', $dados);
 
         $response->assertStatus(201);
-    }
-
-    public function test_criar_itemvenda_com_produto_invalido_gera_erro(): void
-    {
-        $this->criarUserAtor();
-        
-        User::create([
-            'name' => 'Vendedor',
-            'email' => 'vendedor@mail.com',
-            'password' => 'password'
-        ]);
-
-        FormaPagamento::create([
-            'nome' => 'Pix'
-        ]);
-
-        Venda::create([
-            'cliente_id' => null,
-            'forma_pagamento_id' => 1,
-            'total_venda' => 10.2,
-            'parcelado' => true,
-            'vendedor_id' => 1,
-            'data_venda' => now(),
-            'produtos' => [],
-            'qtde_parcelas' => 5
-        ]);
-
-        $dados = [
-            // o produto de id 1 nao existe
-            'produto_id' => 1, 
-            'venda_id' => 1,
-            'quantidade' => 1,
-        ];
-        
-        $response = $this->post('/api/item-venda', $dados);
-
-        $response->assertInvalid();
-    }
-
-    public function test_criar_itemvenda_com_venda_invalida_gera_erro(): void
-    {
-        $this->criarUserAtor();
-        
-        Produto::create([
-            'nome' => 'Produto 1',
-            'preco' => 2.55
-        ]);
-
-        $dados = [
-            'produto_id' => 1, 
-            // a venda de id 1 nao existe
-            'venda_id' => 1,
-            'quantidade' => 1,
-        ];
-        
-        $response = $this->post('/api/item-venda', $dados);
-
-        $response->assertInvalid();
+        $response->assertJson($dados);
+        $this->assertDatabaseHas('item_vendas', $dados);
     }
 
     public function test_itemvenda_show_gera_ok_response(): void
     {
-        $this->criarUserAtor();
-
-        User::create([
-            'name' => 'Vendedor',
-            'email' => 'vendedor@mail.com',
-            'password' => 'password'
-        ]);
-
-        FormaPagamento::create([
-            'nome' => 'Pix'
-        ]);
-
-        Produto::create([
-            'nome' => 'Produto 1',
-            'preco' => 2.55
-        ]);
-
-        Venda::create([
-            'cliente_id' => null,
-            'forma_pagamento_id' => 1,
-            'total_venda' => 10.2,
-            'parcelado' => true,
-            'vendedor_id' => 1,
-            'data_venda' => now(),
-            'produtos' => [],
-            'qtde_parcelas' => 5
-        ]);
-
-        ItemVenda::create([
-            'produto_id' => 1,
-            'venda_id' => 1,
-            'quantidade' => 1,
-            'preco' => 2.55
-        ]);
-        
-        $response = $this->get('/api/item-venda/1');
+        $response = $this->actingAs($this->user)
+                    ->getJson('/api/item-venda/' . $this->modelos['itemVenda']->id);
 
         $response->assertStatus(200);
     }
 
     public function test_itemvenda_update_gera_ok_response_para_atualizacao_de_quantidade(): void
     {
-        $this->criarUserAtor();
-
-        User::create([
-            'name' => 'Vendedor',
-            'email' => 'vendedor@mail.com',
-            'password' => 'password'
-        ]);
-
-        FormaPagamento::create([
-            'nome' => 'Pix'
-        ]);
-
-        Produto::create([
-            'nome' => 'Produto 1',
-            'preco' => 2.55
-        ]);
-
-        Venda::create([
-            'cliente_id' => null,
-            'forma_pagamento_id' => 1,
-            'total_venda' => 10.2,
-            'parcelado' => true,
-            'vendedor_id' => 1,
-            'data_venda' => now(),
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 4]
-            ],
-            'qtde_parcelas' => 5
-        ]);
-
-        ItemVenda::create([
-            'produto_id' => 1,
-            'venda_id' => 1,
-            'quantidade' => 4,
-            'preco' => 2.55
-        ]);
+        $dados = $this->dadosValidos;
+        $dados['produto_id'] = $this->modelos['itemVenda']->produto_id;
         
-        $dados = [
-            'produto_id' => 1,
-            'quantidade' => 1
-        ];
+        $dadosEsperados = $dados;
+        $dadosEsperados['id'] =  $this->modelos['itemVenda']->id;
 
-        $response = $this->put('/api/item-venda/1', $dados);
+        $response = $this->actingAs($this->user)
+                    ->putJson('/api/item-venda/' . $this->modelos['itemVenda']->id, $dados);
 
         $response->assertStatus(200);
+        $response->assertJson($dadosEsperados);
+        $this->assertDatabaseHas('item_vendas', $dadosEsperados);
     }
 
     public function test_itemvenda_update_gera_ok_response_para_atualizacao_de_produtos(): void
     {
-        $this->criarUserAtor();
+        $dados = $this->dadosValidos;
 
-        User::create([
-            'name' => 'Vendedor',
-            'email' => 'vendedor@mail.com',
-            'password' => 'password'
-        ]);
+        $dadosEsperados = $dados;
+        $dadosEsperados['id'] = $this->modelos['itemVenda']->id;
 
-        FormaPagamento::create([
-            'nome' => 'Pix'
-        ]);
-
-        Produto::create([
-            'nome' => 'Produto 1',
-            'preco' => 2.55
-        ]);
-
-        Produto::create([
-            'nome' => 'Produto 2',
-            'preco' => 5.25
-        ]);
-
-        Venda::create([
-            'cliente_id' => null,
-            'forma_pagamento_id' => 1,
-            'total_venda' => 10.2,
-            'parcelado' => true,
-            'vendedor_id' => 1,
-            'data_venda' => now(),
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 4]
-            ],
-            'qtde_parcelas' => 5
-        ]);
-
-        ItemVenda::create([
-            'produto_id' => 1,
-            'venda_id' => 1,
-            'quantidade' => 1,
-            'preco' => 2.55
-        ]);
-        
-        $dados = [
-            'produto_id' => 2,
-            'quantidade' => 1
-        ];
-
-        $response = $this->put('/api/item-venda/1', $dados);
+        $response = $this->actingAs($this->user)
+                    ->putJson('/api/item-venda/' . $this->modelos['itemVenda']->id, $dados);
 
         $response->assertStatus(200);
+        $response->assertJson($dadosEsperados);
+        $this->assertDatabaseHas('item_vendas', $dadosEsperados);
     }
 
-    public function test_atualizar_itemvenda_com_produto_invalido_gera_erro(): void
+    public function test_itemvendastore_captura_ids_e_quantidades_invalidos(): void
     {
-        $this->criarUserAtor();
+        $dados = $this->dadosInvalidos;
+        $dados['venda_id'] = $this->idInvalido;
 
-        User::create([
-            'name' => 'Vendedor',
-            'email' => 'vendedor@mail.com',
-            'password' => 'password'
-        ]);
+        $response = $this->actingAs($this->user)->postJson('/api/item-venda/', $dados);
 
-        FormaPagamento::create([
-            'nome' => 'Pix'
-        ]);
+        $erros = $this->errosValidacao;
+        $erros['venda_id'] = ['The selected venda id is invalid.'];
 
-        Produto::create([
-            'nome' => 'Produto 1',
-            'preco' => 2.55
-        ]);
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors($erros);
+    }
 
-        Venda::create([
-            'cliente_id' => null,
-            'forma_pagamento_id' => 1,
-            'total_venda' => 10.2,
-            'parcelado' => true,
-            'vendedor_id' => 1,
-            'data_venda' => now(),
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 4]
-            ],
-            'qtde_parcelas' => 5
-        ]);
+    public function test_itemvendaupdate_captura_id_e_quantidade_invalidos(): void
+    {
+        $dados = $this->dadosInvalidos;
 
-        ItemVenda::create([
-            'produto_id' => 1,
-            'venda_id' => 1,
-            'quantidade' => 1,
-            'preco' => 2.55
-        ]);
-        
-        $dados = [
-            'produto_id' => 2,
-            'quantidade' => 1
-        ];
+        $response = $this->actingAs($this->user)
+                    ->putJson('/api/item-venda/' . $this->modelos['itemVenda']->id, $dados);
 
-        $response = $this->put('/api/item-venda/1', $dados);
+        $erros = $this->errosValidacao;
 
-        $response->assertInvalid();
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors($erros);
     }
 }

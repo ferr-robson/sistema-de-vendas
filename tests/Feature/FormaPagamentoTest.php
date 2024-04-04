@@ -11,112 +11,99 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 class FormaPagamentoTest extends TestCase
 {
     use RefreshDatabase;
-    
-    /**
-     * Cria um usuario a ser utilizado como ator nas acoes de request
-     */
-    private function criarUserAtor() {
-        $user = User::create([
-            'name' => 'João',
-            'email' => 'joao123@mail.com',
-            'password' => 'password'
-        ]);
 
-        $this->actingAs($user);
+    private User $user;
+
+    private Array $dadosValidos;
+    
+    private Array $dadosInvalidos;
+    
+    private Array $errosValidacao;
+    
+    private Array $modelos;
+    
+    protected function setup(): void
+    {
+        parent::setUp();
+
+        $this->user = User::factory()->create();
+
+        $this->dadosValidos = [
+            'nome' => fake()->text(20)
+        ];
+
+        $this->dadosInvalidos = [
+            'nome' => 'p'
+        ];
+        
+        $this->modelos = [
+            'forma_pagamento' => FormaPagamento::factory()->create(),
+        ];
+
+        $this->errosValidacao = [
+            "nome" => [
+                "The nome field must be at least 2 characters."
+            ]
+        ];
     }
 
     public function test_formapagamento_index_gera_ok_response(): void
     {
-        $this->criarUserAtor();
-
-        $response = $this->get('/api/forma-pagamento/');
+        $response = $this->actingAs($this->user)->getJson('/api/forma-pagamento/');
 
         $response->assertStatus(200);
     }
 
     public function test_formapagamento_store_gera_ok_response(): void
     {
-        $this->criarUserAtor();
-        
-        $data = [
-            'nome' => 'Boleto'
-        ];
-
-        $response = $this->post('/api/forma-pagamento/', $data);
+        $response = $this->actingAs($this->user)->postJson('/api/forma-pagamento/', $this->dadosValidos);
 
         $response->assertStatus(201);
+        $response->assertJson($this->dadosValidos);
+        $this->assertDatabaseHas('forma_pagamentos', $this->dadosValidos);
     }
 
     public function test_criar_formapagamento_com_nome_menor_do_que_dois_caracteres_gera_erro(): void
     {
-        $this->criarUserAtor();
-        
-        $data = [
-            'nome' => 'p'
-        ];
+        $response = $this->actingAs($this->user)->postJson('/api/forma-pagamento/', $this->dadosInvalidos);
 
-        $response = $this->post('/api/forma-pagamento/', $data);
-
-        $response->assertInvalid();
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors($this->errosValidacao);
     }
 
     public function test_formapagamento_show_gera_ok_response(): void
     {
-        $this->criarUserAtor();
-
-        FormaPagamento::create([
-            'nome' => 'Boleto'
-        ]);
-
-        $response = $this->get('/api/forma-pagamento/1');
+        $response = $this->actingAs($this->user)
+                    ->getJson('/api/forma-pagamento/' . $this->modelos['forma_pagamento']->id);
 
         $response->assertStatus(200);
     }
 
     public function test_formapagamento_update_gera_ok_response(): void
     {
-        $this->criarUserAtor();
-        
-        FormaPagamento::create([
-            'nome' => 'Boleto'
-        ]);
-
-        $data = [
-            'nome' => 'Cartão de Crédito'
-        ];
-
-        $response = $this->put('/api/forma-pagamento/1', $data);
+        $response = $this->actingAs($this->user)
+                ->putJson('/api/forma-pagamento/' . $this->modelos['forma_pagamento']->id, $this->dadosValidos);
 
         $response->assertStatus(200);
+        $this->assertDatabaseHas('forma_pagamentos', $this->dadosValidos);
     }
 
     public function test_atualizar_formapagamento_com_nome_menor_do_que_dois_caracteres_gera_erro(): void
     {
-        $this->criarUserAtor();
-        
-        FormaPagamento::create([
-            'nome' => 'Boleto'
-        ]);
+        $response = $this->actingAs($this->user)
+                    ->putJson('/api/forma-pagamento/' . $this->modelos['forma_pagamento']->id, $this->dadosInvalidos);
 
-        $data = [
-            'nome' => 'p'
-        ];
-
-        $response = $this->put('/api/forma-pagamento/1', $data);
-
-        $response->assertInvalid();
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors($this->errosValidacao);
     }
 
     public function test_formapagamento_destroy_gera_ok_response(): void
     {
-        $this->criarUserAtor();
-        
-        FormaPagamento::create([
-            'nome' => 'Boleto'
-        ]);
+        $formaPagamento = FormaPagamento::factory()->create();
 
-        $response = $this->delete('/api/forma-pagamento/1');
+        $response = $this->actingAs($this->user)->deleteJson('/api/forma-pagamento/' . $formaPagamento->id);
 
         $response->assertStatus(200);
+        $this->assertDatabaseMissing('forma_pagamentos', ['id' => $formaPagamento->id]);
     }
 }

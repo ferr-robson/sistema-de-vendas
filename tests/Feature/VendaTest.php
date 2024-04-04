@@ -6,7 +6,6 @@ use Tests\TestCase;
 use App\Models\User;
 use App\Models\Venda;
 use App\Models\Produto;
-use Illuminate\Http\Request;
 use App\Models\FormaPagamento;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,11 +16,15 @@ class VendaTest extends TestCase
 
     private User $user;
 
-    private Array $startSetup;
+    private Array $modelos;
 
-    private Array $dadosVenda;
+    private Array $dadosValidos;
 
     private int $idInvalido;
+    
+    private Array $dadosInvalidos;
+    
+    private Array $errosValidacao;
 
     protected function setup(): void
     {
@@ -29,21 +32,20 @@ class VendaTest extends TestCase
 
         $this->user = User::factory()->create();
 
-        $this->startSetup = [
+        $this->modelos = [
             'user' => User::factory()->create(),
             'produto' => Produto::factory()->create(),
-            'cliente' => '',
             'formaPagamento' => FormaPagamento::factory()->create(),
             'venda' => Venda::factory()->create()
         ];
 
-        $this->dadosVenda = [
+        $this->dadosValidos = [
             'cliente_id' => null,
-            'forma_pagamento_id' => $this->startSetup['formaPagamento']->id,
+            'forma_pagamento_id' => $this->modelos['formaPagamento']->id,
             'parcelado' => true,
             'produtos' => [
                 [
-                    'produto_id' => $this->startSetup['produto']->id, 
+                    'produto_id' => $this->modelos['produto']->id, 
                     'quantidade' => rand(1,5)
                 ],
             ],
@@ -51,6 +53,31 @@ class VendaTest extends TestCase
         ];
 
         $this->idInvalido = 100;
+
+        $this->dadosInvalidos = [
+            'cliente_id' => $this->idInvalido,
+            'forma_pagamento_id' => $this->idInvalido,
+            'parcelado' => true,
+            'produtos' => [
+                [
+                    'produto_id' => $this->idInvalido,
+                    'quantidade' => rand(1,5)
+                ],
+            ],
+            'qtde_parcelas' => rand(1,12)
+        ];
+
+        $this->errosValidacao = [
+            "cliente_id" => [
+                "The selected cliente id is invalid."
+            ],
+            "forma_pagamento_id" => [
+                "The selected forma pagamento id is invalid."
+            ],
+            "produtos.0.produto_id" => [
+                "The selected produtos.0.produto_id is invalid."
+            ]
+        ];
     }
 
     public function test_venda_index_gera_ok_response(): void
@@ -65,109 +92,64 @@ class VendaTest extends TestCase
         $dadosEsperados = [
             'cliente_id' => null,
             'vendedor_id' => 1,
-            'forma_pagamento_id' => $this->startSetup['formaPagamento']->id,
-            'total_venda' => $this->startSetup['produto']->preco * $this->dadosVenda['produtos'][0]['quantidade'],
+            'forma_pagamento_id' => $this->modelos['formaPagamento']->id,
+            'total_venda' => $this->modelos['produto']->preco * $this->dadosValidos['produtos'][0]['quantidade'],
             'parcelado' => true,
         ];
         
-        $response = $this->actingAs($this->user)->postJson('/api/venda',  $this->dadosVenda);
+        $response = $this->actingAs($this->user)->postJson('/api/venda',  $this->dadosValidos);
 
         $response->assertStatus(201);
         $response->assertJson($dadosEsperados);
         $this->assertDatabaseHas('vendas', $dadosEsperados);
     }
 
-    public function test_criar_venda_com_id_do_cliente_invalido_gera_erro(): void
+    public function test_venda_store_captura_ids_invalidos(): void
     {
-        $this->VerificarCampoInvalido('cliente_id', Request::METHOD_POST);
-    }
-
-    public function test_criar_venda_com_forma_de_pagamento_invalido_gera_erro(): void
-    {
-        $this->VerificarCampoInvalido('forma_pagamento_id', Request::METHOD_POST);
-    }
-
-    public function test_criar_venda_com_produto_nao_existente_gera_erro(): void
-    {
-        $dados = $this->dadosVenda;
-        $dados['produtos'][0]['produto_id'] = $this->idInvalido;
-
-        $response = $this->actingAs($this->user)->postJson('/api/venda',  $dados);
+        $response = $this->actingAs($this->user)->postJson('/api/venda/', $this->dadosInvalidos);
 
         $response->assertStatus(422);
-        $response->assertJsonValidationErrors('produtos.0.produto_id');
+        $response->assertJsonValidationErrors($this->errosValidacao);
     }
 
     public function test_venda_show_gera_ok_response(): void
     {
-        $response = $this->actingAs($this->user)->getJson('/api/venda/1');
+        $response = $this->actingAs($this->user)->getJson('/api/venda/' . $this->modelos['venda']->id);
 
         $response->assertStatus(200);
     }
 
     public function test_atualizar_venda_sem_erros(): void
     {
-        $venda = Venda::factory()->create();
-        
-        $novosDados = [
-            'cliente_id' => null,
-            'forma_pagamento_id' => 2,
-            'parcelado' => false
-        ];
-
-        $response = $this->actingAs($this->user)->putJson('/api/venda/' . $venda->id, $novosDados);
+        $response = $this->actingAs($this->user)
+                    ->putJson('/api/venda/' . $this->modelos['venda']->id, $this->dadosValidos);
         
         $response->assertStatus(200);
         
         $this->assertDatabaseHas('vendas', [
-            'id' => $venda->id,
-            'cliente_id' => null,
-            'vendedor_id' => $venda->vendedor_id,
-            'forma_pagamento_id' => 2,
-            'data_venda' => $venda->data_venda,
-            'total_venda' => $venda->total_venda,
-            'parcelado' => false
+            'id' => $this->modelos['venda']->id,
+            'cliente_id' => $this->dadosValidos['cliente_id'],
+            'forma_pagamento_id' => $this->dadosValidos['forma_pagamento_id'],
+            'parcelado' => $this->dadosValidos['parcelado']
         ]);
     }
 
-    public function test_atualizar_venda_com_id_do_cliente_invalido_gera_erro(): void
+    public function test_venda_update_captura_ids_invalidos(): void
     {
-        $this->VerificarCampoInvalido('cliente_id', Request::METHOD_PUT);
-    }
+        $response = $this->actingAs($this->user)
+                    ->putJson('/api/venda/' . $this->modelos['venda']->id, $this->dadosInvalidos);
 
-    public function test_atualizar_venda_com_forma_de_pagamento_invalido_gera_erro(): void
-    {
-        $this->VerificarCampoInvalido('forma_pagamento_id', Request::METHOD_PUT);
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors($this->errosValidacao);
     }
 
     public function test_apagar_venda_gera_ok_response(): void
     {
         $venda = Venda::factory()->create();
 
-        $response = $this->actingAs($this->user)->delete('/api/venda/' . $venda->id);
+        $response = $this->actingAs($this->user)->deleteJson('/api/venda/' . $venda->id);
 
         $response->assertStatus(200);
         $this->assertDatabaseMissing('vendas', ['id' => $venda->id]);
-    }
-
-    private function VerificarCampoInvalido ($campo, $metodo, $id = 1): void
-    {
-        $dados = $this->dadosVenda;
-        $dados[$campo] = $this->idInvalido;
-
-        $response = null;
-        switch ($metodo) {
-            case Request::METHOD_PUT:
-                $response = $this->actingAs($this->user)->putJson('/api/venda/' . $id, $dados);
-                break;
-            case Request::METHOD_POST:
-                $response = $this->actingAs($this->user)->postJson('/api/venda/', $dados);
-                break;
-            default:
-                throw new \InvalidArgumentException("Método HTTP inválido: $metodo");
-        }
-
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors($campo);
     }
 }

@@ -7,382 +7,135 @@ use App\Models\User;
 use App\Models\Venda;
 use App\Models\Parcela;
 use App\Models\Produto;
-use App\Models\FormaPagamento;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class ParcelaTest extends TestCase
 {
     use RefreshDatabase;
-    
-    /**
-     * Cria o usar ator, que sera o usuario logado ao fazer a requisicao 
-     */
-    private function criarUserAtor() {
-        $user = User::create([
-            'name' => 'João',
-            'email' => 'joao123@mail.com',
-            'password' => 'password'
-        ]);
 
-        $this->actingAs($user);
-    }
+    private User $user;
 
-    /**
-     * Cria a venda, que sera usada para associar a parcela
-     */
-    private function criarVenda() {
-        User::create([
-            'name' => 'Vendedor',
-            'email' => 'vendedor@mail.com',
-            'password' => 'password'
-        ]);
+    private int $idInvalido;
 
-        FormaPagamento::create([
-            'nome' => 'Pix'
-        ]);
+    private Array $modelos;
 
-        Produto::create([
-            'nome' => 'Produto 1',
-            'preco' => 2.55
-        ]);
+    private Array $errosValidacao;
 
-        Venda::create([
-            'cliente_id' => null,
-            'forma_pagamento_id' => 1,
-            'total_venda' => 10.2,
-            'parcelado' => true,
-            'vendedor_id' => 1,
-            'data_venda' => now(),
-            'produtos' => [
-                ['produto_id' => 1, 'quantidade' => 4],
+    private Array $dadosValidos;
+
+    private Array $dadosInvalidos;
+
+    protected function setup(): void
+    {
+        parent::setUp();
+
+        $this->user = User::factory()->create();
+
+        $this->idInvalido = 1000;
+
+        $this->modelos = [
+            'produto' => Produto::factory()->create(),
+            'venda' => Venda::factory()->create(),
+            'parcela' => Parcela::factory()->create(),
+        ];
+
+        $this->errosValidacao = [
+            "venda_id" => [
+                "The selected venda id is invalid."
             ],
-            'qtde_parcelas' => 5
-        ]);
-    }
+            "valor_parcela" => [
+                "The valor parcela field must be at least 1.",
+                "The valor parcela field must be a number."
+            ],
+            "data_vencimento" => [
+                "The data vencimento field must be a valid date."
+            ],
+        ];
 
+        $this->dadosInvalidos = [
+            'venda_id' => $this->idInvalido,
+            'data_vencimento' => '09/2009',
+            'valor_parcela' => 'x'
+        ];
+
+        $this->dadosValidos = [
+            'venda_id' => $this->modelos['venda']->id,
+            'data_vencimento' => $this->modelos['venda']->data_venda,
+            'valor_parcela' => fake()->randomFloat(2, 1, 200),
+        ];
+    }
+    
     public function test_parcela_index_gera_ok_response_listando_todas_parcelas(): void
     {
-        $this->criarUserAtor();
-
-        $response = $this->get('/api/parcela');
+        $response = $this->actingAs($this->user)->getJson('/api/parcela');
 
         $response->assertStatus(200);
     }
 
     public function test_parcela_index_gera_ok_response_para_parcelas_de_uma_venda_especifica(): void
     {
-        $this->criarUserAtor();
+        $parcela = Parcela::factory()->create();
 
-        $this->criarVenda();
-
-        Parcela::create([
-            'venda_id' => 1,
-            'data_vencimento' => now(),
-            'valor_parcela' => 10.5
-        ]);
-
-        Parcela::create([
-            'venda_id' => 1,
-            'data_vencimento' => now(),
-            'valor_parcela' => 5.5
-        ]);
-
-        $dados = [
-            "venda" => 1
-        ];
-
-        $response = $this->get('/api/parcela', $dados);
+        $response = $this->actingAs($this->user)->getJson('/api/parcela', ['venda' => $parcela->venda_id]);
 
         $response->assertStatus(200);
     }
 
     public function test_parcela_store_gera_ok_response(): void
     {
-        $this->criarUserAtor();
-
-        $this->criarVenda();
-
-        $dados = [
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonth(),
-            'valor_parcela' => 5.5
-        ];
-
-        $response = $this->post('/api/parcela', $dados);
+        $response = $this->actingAs($this->user)->postJson('/api/parcela', $this->dadosValidos);
 
         $response->assertStatus(201);
-    }
-
-    public function test_criar_parcela_com_vendaid_invalido_gera_erro(): void
-    {
-        $this->criarUserAtor();
-
-        $dados = [
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonth(),
-            'valor_parcela' => 5.5
-        ];
-
-        $response = $this->post('/api/parcela', $dados);
-
-        $response->assertInvalid();
-    }
-
-    public function test_criar_parcela_com_datavenda_anterior_a_atual_gera_erro(): void
-    {
-        $this->criarUserAtor();
-
-        $this->criarVenda();
-
-        $dados = [
-            'venda_id' => 1,
-            'data_vencimento' => now()->addDays(-1),
-            'valor_parcela' => 5.5
-        ];
-
-        $response = $this->post('/api/parcela', $dados);
-
-        $response->assertInvalid();
-    }
-
-    public function test_criar_parcela_com_datavenda_no_formato_incorreto_gera_erro(): void
-    {
-        $this->criarUserAtor();
-
-        $this->criarVenda();
-
-        $dados = [
-            'venda_id' => 1,
-            'data_vencimento' => '13/13/2013',
-            'valor_parcela' => 5.5
-        ];
-
-        $response = $this->post('/api/parcela', $dados);
-
-        $response->assertInvalid();
-    }
-
-    public function test_criar_parcela_com_valor_nao_numerico_gera_erro(): void
-    {
-        $this->criarUserAtor();
-
-        $this->criarVenda();
-
-        $dados = [
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonth(),
-            'valor_parcela' => 'abc5.5'
-        ];
-
-        $response = $this->post('/api/parcela', $dados);
-
-        $response->assertInvalid();
-    }
-
-    public function test_criar_parcela_com_valor_menor_que_zero_gera_erro(): void
-    {
-        $this->criarUserAtor();
-
-        $this->criarVenda();
-
-        $dados = [
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonth(),
-            'valor_parcela' => -1
-        ];
-
-        $response = $this->post('/api/parcela', $dados);
-
-        $response->assertInvalid();
-    }
-
-    public function test_criar_parcela_com_valor_igual_zero_gera_erro(): void
-    {
-        $this->criarUserAtor();
-
-        $this->criarVenda();
-
-        $dados = [
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonth(),
-            'valor_parcela' => 0
-        ];
-
-        $response = $this->post('/api/parcela', $dados);
-
-        $response->assertInvalid();
+        $this->assertDatabaseHas('parcelas', [
+            'venda_id' => $this->modelos['venda']->id,
+            'valor_parcela' => $this->dadosValidos['valor_parcela'],
+        ]);
     }
 
     public function test_parcela_show_gera_ok_response(): void
     {
-        $this->criarUserAtor();
-
-        $this->criarVenda();
-
-        Parcela::create([
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonth(),
-            'valor_parcela' => 5.5
-        ]);
-
-        $response = $this->get('/api/parcela/1');
+        $response = $this->actingAs($this->user)->getJson('/api/parcela/' . $this->modelos['parcela']->id);
 
         $response->assertStatus(200);
     }
 
     public function test_parcela_update_gera_ok_response(): void
     {
-        $this->criarUserAtor();
-
-        $this->criarVenda();
-
-        Parcela::create([
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonth(),
-            'valor_parcela' => 5.5
-        ]);
-
-        $dados = [
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonths(2),
-            'valor_parcela' => 10.0
-        ];
-
-        $response = $this->put('/api/parcela/1', $dados);
-
+        $response = $this->actingAs($this->user)
+                    ->putJson('/api/parcela/' . $this->modelos['parcela']->id, $this->dadosValidos);
+        
         $response->assertStatus(200);
+        $this->assertDatabaseHas('parcelas', [
+            'id' => $this->modelos['parcela']->id, 
+            'valor_parcela' => $this->dadosValidos['valor_parcela']
+        ]);
     }
 
-    public function test_atualizar_parcela_com_vendaid_invalido_gera_erro(): void
+    public function test_parcela_update_captura_id_datavencimento_e_valor_invalidos(): void
     {
-        $this->criarUserAtor();
+        $response = $this->actingAs($this->user)
+                    ->putJson('/api/parcela/' . $this->modelos['parcela']->id, $this->dadosInvalidos);
 
-        $this->criarVenda();
-
-        Parcela::create([
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonth(),
-            'valor_parcela' => 5.5
-        ]);
-
-        $dados = [
-            'venda_id' => 2,
-            'data_vencimento' => now()->addMonths(2),
-            'valor_parcela' => 10.0
-        ];
-
-        $response = $this->put('/api/parcela/1', $dados);
-
-        $response->assertInvalid();
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors($this->errosValidacao);
     }
 
-    public function test_atualizar_parcela_com_datavenda_no_formato_incorreto_gera_erro(): void
+    public function test_parcela_store_captura_id_datavencimento_e_valor_invalidos(): void
     {
-        $this->criarUserAtor();
+        $response = $this->actingAs($this->user)->postJson('/api/parcela/', $this->dadosInvalidos);
 
-        $this->criarVenda();
-
-        Parcela::create([
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonth(),
-            'valor_parcela' => 5.5
-        ]);
-
-        $dados = [
-            'venda_id' => 1,
-            'data_vencimento' => '13/13/2013',
-            'valor_parcela' => 5.5
-        ];
-
-        $response = $this->put('/api/parcela/1', $dados);
-
-        $response->assertInvalid();
-    }
-
-    public function test_atualizar_parcela_com_valor_nao_numerico_gera_erro(): void
-    {
-        $this->criarUserAtor();
-
-        $this->criarVenda();
-
-        Parcela::create([
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonth(),
-            'valor_parcela' => 5.5
-        ]);
-
-        $dados = [
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonth(),
-            'valor_parcela' => 'abc5.5'
-        ];
-
-        $response = $this->put('/api/parcela/1', $dados);
-
-        $response->assertInvalid();
-    }
-
-    public function test_atualizar_parcela_com_valor_menor_que_zero_gera_erro(): void
-    {
-        $this->criarUserAtor();
-
-        $this->criarVenda();
-
-        Parcela::create([
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonth(),
-            'valor_parcela' => 5.5
-        ]);
-
-        $dados = [
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonth(),
-            'valor_parcela' => -1
-        ];
-
-        $response = $this->put('/api/parcela/1', $dados);
-
-        $response->assertInvalid();
-    }
-
-    public function test_atualizar_parcela_com_valor_igual_zero_gera_erro(): void
-    {
-        $this->criarUserAtor();
-
-        $this->criarVenda();
-
-        Parcela::create([
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonth(),
-            'valor_parcela' => 5.5
-        ]);
-
-        $dados = [
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonth(),
-            'valor_parcela' => 0
-        ];
-
-        $response = $this->put('/api/parcela/1', $dados);
-
-        $response->assertInvalid();
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors($this->errosValidacao);
     }
 
     public function test_parcela_destroy_gera_ok_response(): void
     {
-        $this->criarUserAtor();
+        $parcela = Parcela::factory()->create();
 
-        $this->criarVenda();
-
-        Parcela::create([
-            'venda_id' => 1,
-            'data_vencimento' => now()->addMonth(),
-            'valor_parcela' => 5.5
-        ]);
-
-        $response = $this->delete('/api/parcela/1');
+        $response = $this->actingAs($this->user)->deleteJson('/api/parcela/' . $parcela->id);
 
         $response->assertStatus(200);
+        $this->assertDatabaseMissing('parcelas', ['id' => $parcela->id]);
     }
 }

@@ -11,145 +11,102 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 class ClienteTest extends TestCase
 {
     use RefreshDatabase;
-    
-    /**
-     * Cria um usuario a ser utilizado como ator nas acoes de request
-     */
-    private function criarUserAtor() {
-        $user = User::create([
-            'name' => 'João',
-            'email' => 'joao123@mail.com',
-            'password' => 'password'
-        ]);
 
-        $this->actingAs($user);
-    }    
+    private User $user;
+
+    private Array $dadosValidosCliente;
+    
+    private Array $modelos;
+    
+    private Array $errosValidacao;
+
+    protected function setup(): void
+    {
+        parent::setUp();
+
+        $this->user = User::factory()->create();
+
+        $this->dadosValidosCliente = [
+            'nome' => fake()->name(),
+            'email' => fake()->email(),
+        ];
+
+        $this->modelos = [
+            'cliente' => Cliente::factory()->create(),
+        ];
+
+        $this->errosValidacao = [
+            "email" => [
+                "The email field must be a valid email address."
+            ]
+        ];
+    }
 
     public function test_cliente_index_gera_ok_response(): void
     {
-        $this->criarUserAtor();
+        $response = $this->actingAs($this->user)->getJson('/api/cliente/');
 
-        $response = $this->get('/api/cliente/');
-
-        $response->assertValid();
+        $response->assertStatus(200);
     }
 
     public function test_criar_cliente_sem_erros(): void
     {
-        $this->criarUserAtor();
-        
-        $dados = [
-            'nome' => 'Nome do Cliente',
-            'email' => 'email@cliente.com',
-        ];
+        $response = $this->actingAs($this->user)->postJson('/api/cliente', $this->dadosValidosCliente);
 
-        $response = $this->post('/api/cliente', $dados);
-
-        $response->assertValid();
-    }
-
-    public function test_criar_cliente_sem_nome_gera_erro(): void
-    {
-        $this->criarUserAtor();
-
-        $dados = [
-            'email' => 'email@cliente.com',
-        ];
-
-        $response = $this->post('/api/cliente', $dados);
-
-        $response->assertInvalid();
-    }
-
-    public function test_criar_cliente_sem_email_gera_erro(): void
-    {
-        $this->criarUserAtor();
-
-        $dados = [
-            'nome' => 'Nome do Cliente',
-        ];
-        
-        $response = $this->post('/api/cliente', $dados);
-
-        $response->assertInvalid();
+        $response->assertStatus(201);
+        $response->assertJson($this->dadosValidosCliente);
+        $this->assertDatabaseHas('clientes', $this->dadosValidosCliente);
     }
 
     public function test_criar_cliente_com_email_invalido_gera_erro(): void
     {
-        $this->criarUserAtor();
+        $dados = $this->dadosValidosCliente;
+        $dados['email'] = 'emailinvalido@';
 
-        $dados = [
-            'nome' => 'Nome do Cliente',
-            'email' => 'emaildocliente',
-        ];
+        $response = $this->actingAs($this->user)->postJson('/api/cliente', $dados);
 
-        $response = $this->post('/api/cliente', $dados);
-
-        $response->assertInvalid();
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors($this->errosValidacao);
     }
 
     public function test_atualizar_cliente_sem_erros(): void
     {
-        $this->criarUserAtor();
-        
-        Cliente::create([
-            'nome' => 'Paulo',
-            'email' => 'paulo123@email.com'
-        ]);
-        
-        $dados = [
-            'nome' => 'Pedro',
-            'email' => 'pedro@cliente.com',
-        ];
+        $response = $this->actingAs($this->user)
+                    ->putJson('/api/cliente/' . $this->modelos['cliente']->id, $this->dadosValidosCliente);
 
-        $response = $this->put('/api/cliente/1', $dados);
-
-        $response->assertValid();
+        $dadosEsperados = $this->dadosValidosCliente;
+        $dadosEsperados['id'] = $this->modelos['cliente']->id;
+        
+        $response->assertStatus(200);
+        $this->assertDatabaseHas('clientes', $dadosEsperados);
     }
 
     public function test_atualizar_cliente_com_email_invalido_gera_erro(): void
     {
-        $this->criarUserAtor();
+        $dados = $this->dadosValidosCliente;
+        $dados['email'] = 'emailinvalido@';
 
-        Cliente::create([
-            'nome' => 'Paulo',
-            'email' => 'paulo123@email.com'
-        ]);
+        $response = $this->actingAs($this->user)
+                        ->putJson('/api/cliente/' . $this->modelos['cliente']->id, $dados);
 
-        $dados = [
-            'email' => 'emaildocliente',
-        ];
-
-        $response = $this->put('/api/cliente/1', $dados);
-
-        $response->assertInvalid();
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors($this->errosValidacao);
     }
 
     public function test_cliente_show_gera_ok_response(): void
     {
-        $this->criarUserAtor();
+        $response = $this->actingAs($this->user)->getJson('/api/cliente/' . $this->modelos['cliente']->id);
 
-        Cliente::create([
-            'nome' => 'Paulo',
-            'email' => 'paulo123@email.com'
-        ]);
-
-        $response = $this->get('/api/cliente/1');
-
-        $response->assertValid();
+        $response->assertStatus(200);
     }
 
     public function test_apagar_cliente_gera_ok_response(): void
     {
-        $this->criarUserAtor();
+        $cliente = Cliente::factory()->create();
 
-        Cliente::create([
-            'nome' => 'Paulo',
-            'email' => 'paulo123@email.com'
-        ]);
-
-        $response = $this->delete('/api/cliente/1');
+        $response = $this->actingAs($this->user)->deleteJson('/api/cliente/' . $cliente->id);
 
         $response->assertStatus(200);
+        $this->assertDatabaseMissing('vendas', ['id' => $cliente->id]);
     }
 }
